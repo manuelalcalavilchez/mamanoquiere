@@ -1,7 +1,7 @@
 # Mamanoquiere: base de datos + API + web/app
 # En EasyPanel: crear un servicio "Compose" con este archivo y asignar el dominio al servicio "web" (puerto 80).
 services:
-  db:
+  mmq-db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -15,14 +15,14 @@ services:
       interval: 10s
       retries: 5
 
-  api:
+  mmq-api:
     build: ./api
     restart: unless-stopped
     depends_on:
-      db:
+      mmq-db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mamanoquiere}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mamanoquiere}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mamanoquiere}:${POSTGRES_PASSWORD}@mmq-db:5432/${POSTGRES_DB:-mamanoquiere}
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env}
       ROOT_PATH: /api
       MEDIA_DIR: /data/media
@@ -43,7 +43,7 @@ services:
   web:
     build: ./web
     restart: unless-stopped
-    depends_on: [api]
+    depends_on: [mmq-api]
     expose:
       - "80"
     # Fuera de EasyPanel, para publicar un puerto en el host:
