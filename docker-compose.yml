@@ -46,6 +46,11 @@ services:
     depends_on: [mmq-api]
     expose:
       - "80"
+    # Conectado también a la red de EasyPanel para que Traefik llegue al contenedor
+    networks:
+      default:
+      easypanel:
+        aliases: [postgis_mamanoquiere_web]
     # Fuera de EasyPanel, para publicar un puerto en el host:
     # ports:
     #   - "${WEB_PORT:-8080}:80"
@@ -53,3 +58,7 @@ services:
 volumes:
   pgdata:
   media:
+
+networks:
+  easypanel:
+    external: true
