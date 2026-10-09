@@ -1,8 +1,10 @@
 import type { APIRoute } from 'astro';
 import { langs, useT } from '../i18n';
 import { getArtists, visible } from '../lib/db';
+import { siteUrl } from '../lib/site';
 
-export const GET: APIRoute = async ({ site }) => {
+export const GET: APIRoute = async ({ url }) => {
+  const site = siteUrl(url);
   const urls: string[] = [];
   for (const l of langs) {
     const t = useT(l);

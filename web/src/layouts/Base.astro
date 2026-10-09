@@ -7,6 +7,7 @@ import '@fontsource/karla/500.css';
 import '../styles/global.css';
 import { langs, localizePath, useT, type Lang } from '../i18n';
 import { getBusiness, getLocations, visible, showPending } from '../lib/db';
+import { siteUrl, runtimeEnv } from '../lib/site';
 import MobileBar from '../components/MobileBar.astro';
 import ConsentBanner from '../components/ConsentBanner.astro';
 import Footer from '../components/Footer.astro';
@@ -14,7 +15,7 @@ import Footer from '../components/Footer.astro';
 interface Props { lang: Lang; title?: string; description?: string; image?: string; noindex?: boolean; jsonLd?: object[] }
 const { lang, title, description, image, noindex = false, jsonLd = [] } = Astro.props;
 const t = useT(lang);
-const site = Astro.site!;
+const site = siteUrl(Astro.url);
 const path = Astro.url.pathname;
 const canonical = new URL(path, site).href;
 const pageTitle = title ? `${title} — Mamanoquiere Tattoo Ibiza` : t('meta.title');
@@ -46,8 +47,9 @@ const orgLd = {
     areaServed: ['Ibiza', 'Eivissa'],
   })),
 };
-const umamiUrl = import.meta.env.PUBLIC_UMAMI_URL;
-const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
+const umamiUrl = runtimeEnv('PUBLIC_UMAMI_URL');
+const umamiId = runtimeEnv('PUBLIC_UMAMI_WEBSITE_ID');
+const assetsUrl = runtimeEnv('PUBLIC_ASSETS_URL');
 ---
 <!doctype html>
 <html lang={lang}>
@@ -71,7 +73,7 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
   {image && <meta property="og:image" content={image} />}
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  {import.meta.env.PUBLIC_ASSETS_URL && <link rel="preconnect" href={import.meta.env.PUBLIC_ASSETS_URL} />}
+  {assetsUrl && <link rel="preconnect" href={assetsUrl} />}
   <script type="application/ld+json" set:html={JSON.stringify(orgLd)} />
   {jsonLd.map((j) => <script type="application/ld+json" set:html={JSON.stringify(j)} />)}
 </head>

@@ -1,6 +1,89 @@
-# Mamanoquiere Tattoo Ibiza — Web + CRM (rama `astro-directus`)
+# Mamanoquiere Tattoo Ibiza — Web + CRM (rama `paradocker`)
 
-> Alternativa a la versión FastAPI + React de `main`: web pública en Astro SSR y CRM sobre Directus, misma base PostgreSQL. Se despliega en EasyPanel como servicio Compose independiente (servicios con prefijo `mmqd-`), así puede convivir con la de `main`.
+> Misma aplicación que `astro-directus` (web Astro SSR + CRM Directus + PostgreSQL), empaquetada en **una sola imagen Docker** para desplegar en Easypanel como **App** con fuente GitHub → repositorio → rama → Dockerfile. La opción Compose sigue disponible en `docker-compose.yml`.
+
+## Despliegue con Dockerfile (rama `paradocker`)
+
+La imagen (`Dockerfile` en la raíz) lleva dentro:
+
+| Proceso | Puerto | Uso |
+|---|---|---|
+| Web Astro | `3000` | web pública; también sirve las imágenes en `/assets/…` (las pide a Directus por dentro) |
+| Directus 11.17.4 | `8055` | CRM / backoffice |
+| PostgreSQL 16 | solo interno | base de datos |
+
+### Pasos en Easypanel
+
+1. **Crear la app.** Proyecto → **+ Servicio → App**.
+2. **Fuente.** Pestaña *Source* → **GitHub**:
+   - Owner `manuelalcalavilchez`
+   - Repositorio `mamanoquiere`
+   - Rama `paradocker`
+   - Build path `/`
+
+   En *Build* elige **Dockerfile**, archivo `Dockerfile`.
+3. **Volumen (obligatorio).** *Advanced → Mounts → Add Volume*: nombre `mmq-data`, mount path `/data`. Ahí van la base de datos, las fotos subidas y los secretos generados. Sin este volumen, cada redeploy empieza de cero.
+4. **Entorno.** En *Environment*, como mínimo:
+   ```env
+   ADMIN_EMAIL=tu@email.com
+   ADMIN_PASSWORD=una-contraseña-larga
+   SITE_URL=https://mamanoquiere.tudominio.es
+   CRM_URL=https://crm-mamanoquiere.tudominio.es
+   SHOW_PENDING=true
+   ```
+   El resto es opcional (ver `.env.example`).
+5. **Dominios.** En *Domains* añade dos, a la misma app:
+   - `mamanoquiere.tudominio.es` → puerto **3000**
+   - `crm-mamanoquiere.tudominio.es` → puerto **8055**
+6. **Deploy.** El primer arranque tarda unos 30–60 s. Al terminar, los logs muestran `[mmq] web en :3000 · CRM en :8055` y `[mmq] Directus configurado`.
+7. **Primer acceso al CRM.** Entra con `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Directus pide una vez el email del responsable del proyecto y aceptar su licencia BSL (gratuita por debajo de 5 M$ de facturación).
+
+### Qué hace el arranque
+
+| Momento | Acción |
+|---|---|
+| Primer arranque | Crea la base de datos y aplica `db/*.sql` en orden. |
+| Despliegues posteriores | Aplica solo los ficheros SQL nuevos (registro en `mmq_meta.migrations`). Para cambiar el esquema, añade `db/006_….sql`. |
+| Secretos | Las contraseñas internas, la clave de Directus y la sal de IP se generan una vez y se guardan en `/data/secrets.env`. Si defines `DB_PASSWORD`, `WEB_DB_PASSWORD`, `DIRECTUS_SECRET` o `IP_HASH_SALT` en Easypanel, tienen prioridad. |
+| Contraseña de admin | Si no defines `ADMIN_PASSWORD`, se genera; está en `GEN_ADMIN_PASSWORD` dentro de ese fichero. |
+| CRM | Configura Directus (menús, roles, carpetas, panel) en cada arranque, sin duplicar nada. |
+| Fallos | Si la web o Directus se caen, el contenedor termina y Easypanel lo reinicia. Healthcheck en `/healthz`. |
+
+**Modo demo vs. producción**
+- `SHOW_PENDING=true` (valor por defecto en esta imagen): barra "Versión de demostración", datos pendientes visibles y fotos importadas visibles. Además, `noindex` y `robots.txt` bloquean la indexación.
+- Para producción, pon `SHOW_PENDING=false` y valida los contenidos en el CRM.
+
+### Fotos para la demo
+
+Con la app desplegada, desde tu equipo:
+```bash
+pip install requests pillow instaloader
+export DIRECTUS_URL=https://crm-mamanoquiere.tudominio.es ADMIN_EMAIL=... ADMIN_PASSWORD=...
+python tools/import_portfolio.py instagram <perfil_del_estudio> --login <tu_usuario> --limit 40
+# o desde una carpeta:
+python tools/import_portfolio.py folder ./fotos --limit 40
+```
+
+### Copias de seguridad
+
+Todo está en el volumen `mmq-data`. Para un volcado de la base de datos:
+```bash
+docker exec <contenedor> pg_dump -h /run/postgresql -U mmq mamanoquiere > mmq.sql
+```
+Para copiar las fotos, haz copia del volumen completo (por ejemplo, con la tarea de backups de volúmenes de Easypanel o con restic).
+
+### Probar en local
+
+```bash
+docker build -t mamanoquiere .
+docker run -p 3000:3000 -p 8055:8055 -v mmq-data:/data \
+  -e ADMIN_EMAIL=admin@example.com -e ADMIN_PASSWORD=admin12345 mamanoquiere
+# web: http://localhost:3000/es/   ·   CRM: http://localhost:8055
+```
+
+---
+
+## Alternativa: Compose (rama `astro-directus`)
 
 Web pública bilingüe y CRM para un estudio con dos ubicaciones (Puerto y Beach).
 
@@ -37,12 +120,14 @@ db/                 imagen Postgres con el esquema (se aplica en el primer arran
   005_prefill_publico.sql  datos públicos de los estudios (pendientes de validar)
 directus/           bootstrap.mjs: configura Directus por API (idempotente)
 tools/              import_portfolio.py: fotos de Instagram o carpeta → galería demo
-web/                Astro (landing, artistas, perfiles, legales, /api/lead, sitemap)
+web/                Astro (landing, artistas, perfiles, legales, /api/lead, sitemap, proxy /assets)
+Dockerfile          imagen única (Postgres + Directus + web) para Easypanel App
+docker/             entrypoint.sh (permisos de /data) y start.sh (arranque, migraciones, supervisión)
 docker-compose.yml  db + directus + directus-setup + web + backup diario
 .env.example
 ```
 
-## Despliegue en Easypanel (demo en ~15 min)
+### Despliegue como servicio Compose
 
 1. **Repositorio.** Ya está en GitHub, rama `astro-directus`.
 2. **Servicio.** En EasyPanel, **+ Servicio → Compose**, origen Git `https://github.com/manuelalcalavilchez/mamanoquiere.git`, **rama `astro-directus`**, archivo `docker-compose.yml`.
