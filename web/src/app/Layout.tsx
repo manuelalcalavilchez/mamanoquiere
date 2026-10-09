@@ -10,6 +10,7 @@ const ITEMS: { to: string; txt: string; modulo?: string; rol?: "gestion" | "admi
   { to: "/app/agenda", txt: "Agenda", modulo: "agenda" },
   { to: "/app/trabajos", txt: "Trabajos", modulo: "trabajos" },
   { to: "/app/caja", txt: "Caja", modulo: "caja" },
+  { to: "/app/facturacion", txt: "Facturación", modulo: "facturacion", rol: "gestion" },
   { to: "/app/clientes", txt: "Clientes", modulo: "clientes" },
   { to: "/app/consentimiento", txt: "Consentimiento", modulo: "consentimiento" },
   { to: "/app/mensajes", txt: "Mensajes", modulo: "mensajes", rol: "gestion" },

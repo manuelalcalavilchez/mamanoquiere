@@ -19,7 +19,8 @@ def resumen(tienda_id: int, fecha: date, db: Session = Depends(get_db), user: Us
     data = {**data, "cerrado": cierre is not None}
     if not es_gestion(user):  # un profesional solo ve su línea
         data["personas"] = [p for p in data["personas"] if p["usuario_id"] == user.id]
-        for k in ("facturado_cent", "profesionales_cent", "estudio_cent", "por_forma_pago"):
+        for k in ("facturado_cent", "profesionales_cent", "estudio_cent", "por_forma_pago", "iva", "base_cent",
+                  "cuota_iva_cent", "descuentos_cent", "sin_factura"):
             data.pop(k, None)
     return data
 
@@ -58,10 +59,17 @@ def exportar_csv(tienda_id: int, desde: date, hasta: date, db: Session = Depends
                                              Trabajo.fecha <= hasta).order_by(Trabajo.fecha)).all()
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=";")
-    w.writerow(["fecha", "profesional", "servicio", "descripcion", "importe", "pago", "%", "profesional €", "estudio €"])
+    w.writerow(["fecha", "profesional", "servicio", "descripcion", "precio", "descuento", "motivo descuento",
+                "importe", "base", "IVA %", "cuota IVA", "pago", "%", "profesional €", "estudio €", "factura"])
+    from ..models import Factura
+
+    def e(c):
+        return f"{(c or 0) / 100:.2f}".replace(".", ",")
     for t in filas:
-        w.writerow([t.fecha, t.usuario.nombre, t.tipo_servicio.value, t.descripcion or "",
-                    f"{t.importe_cent / 100:.2f}".replace(".", ","), t.forma_pago.value, t.porcentaje,
-                    f"{t.profesional_cent / 100:.2f}".replace(".", ","), f"{t.estudio_cent / 100:.2f}".replace(".", ",")])
+        num = db.get(Factura, t.factura_id).num_serie if t.factura_id else ""
+        w.writerow([t.fecha, t.usuario.nombre, t.tipo_servicio.value, t.descripcion or "", e(t.precio_cent or t.importe_cent),
+                    e(t.descuento_cent), t.descuento_motivo or "", e(t.importe_cent), e(t.base_cent),
+                    f"{(t.iva_x100 or 0) / 100:g}".replace(".", ","), e(t.cuota_iva_cent), t.forma_pago.value,
+                    t.porcentaje, e(t.profesional_cent), e(t.estudio_cent), num])
     return StreamingResponse(iter(["\ufeff" + buf.getvalue()]), media_type="text/csv",
                              headers={"Content-Disposition": f"attachment; filename=caja_{desde}_{hasta}.csv"})

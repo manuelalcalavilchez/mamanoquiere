@@ -36,3 +36,19 @@ def repartir(importe_cent: int, porcentaje: int) -> tuple[int, int]:
     """Redondeo a favor del estudio: el profesional recibe el entero inferior."""
     profesional = importe_cent * porcentaje // 100
     return profesional, importe_cent - profesional
+
+
+def reparto_completo(db: Session, cfg: dict, usuario: Usuario, tipo: TipoServicio, tienda_id: int | None,
+                     importe_cent: int) -> dict:
+    """Reparto + IVA. Si la comisión va 'sobre base', el % se aplica a la base sin IVA y el estudio se queda
+    el resto (incluido el IVA, que es quien lo ingresa)."""
+    from .fiscal import desglosar
+
+    iva = cfg["iva"].get(tipo.value, 2100)
+    base, cuota = desglosar(importe_cent, iva, cfg.get("precios_con_iva", True))
+    total = base + cuota
+    pct = porcentaje_para(db, usuario, tipo, tienda_id)
+    sobre = base if cfg.get("comision_sobre") == "base" else total
+    prof, _ = repartir(sobre, pct)
+    return {"porcentaje": pct, "profesional_cent": prof, "estudio_cent": total - prof, "iva_x100": iva,
+            "base_cent": base, "cuota_iva_cent": cuota, "total_cent": total}

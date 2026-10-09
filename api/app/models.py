@@ -53,6 +53,7 @@ class Ajustes(Base):
     texto_legal: Mapped[str] = mapped_column(Text, default="")
     moneda: Mapped[str] = mapped_column(String(3), default="EUR")
     web: Mapped[dict] = mapped_column(JSON, default=dict)  # idiomas, redes, valoración verificada, SEO
+    facturacion: Mapped[dict | None] = mapped_column(JSON)  # datos fiscales, IVA, series, Verifactu (ver defaults.FACTURACION)
 
 
 class Tienda(Base):
@@ -148,6 +149,15 @@ class Trabajo(Base):
     foto_url: Mapped[str | None] = mapped_column(String(500))
     en_portfolio: Mapped[bool] = mapped_column(Boolean, default=False)
     creado: Mapped[datetime] = mapped_column(DateTime, default=ahora)
+    # Fiscal. importe_cent = lo cobrado (IVA incluido, ya descontado). Precio y descuento quedan para la trazabilidad.
+    precio_cent: Mapped[int | None] = mapped_column(Integer)
+    descuento_cent: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    descuento_id: Mapped[int | None] = mapped_column(Integer)
+    descuento_motivo: Mapped[str | None] = mapped_column(String(120))
+    iva_x100: Mapped[int | None] = mapped_column(Integer)          # 2100 = 21 %
+    base_cent: Mapped[int | None] = mapped_column(Integer)
+    cuota_iva_cent: Mapped[int | None] = mapped_column(Integer)
+    factura_id: Mapped[int | None] = mapped_column(Integer)
     usuario: Mapped[Usuario] = relationship(lazy="joined")
 
     @property
@@ -240,4 +250,96 @@ class EventoWeb(Base):
     tienda: Mapped[str | None] = mapped_column(String(60))
     servicio: Mapped[str | None] = mapped_column(String(30))
     idioma: Mapped[str | None] = mapped_column(String(5))
+    creado: Mapped[datetime] = mapped_column(DateTime, default=ahora)
+
+
+# ---------------------------------------------------------------- Facturación
+class Descuento(Base):
+    """Descuentos predefinidos (amigos, segunda sesión, promoción...). Se pueden aplicar también a mano."""
+    __tablename__ = "descuentos"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(80))
+    tipo: Mapped[str] = mapped_column(String(10))            # porcentaje | importe
+    valor: Mapped[int] = mapped_column(Integer)              # % entero o céntimos
+    solo_gestion: Mapped[bool] = mapped_column(Boolean, default=False)
+    activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    desde: Mapped[date | None] = mapped_column(Date)
+    hasta: Mapped[date | None] = mapped_column(Date)
+
+
+class ContadorSerie(Base):
+    """Último número de cada serie. Se bloquea la fila al emitir para que la numeración sea correlativa."""
+    __tablename__ = "contadores_serie"
+    serie: Mapped[str] = mapped_column(String(20), primary_key=True)
+    ultimo: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Factura(Base):
+    """Factura expedida. No se edita ni se borra: se corrige con rectificativa o se anula (registro de anulación).
+    Los datos del emisor y del destinatario se copian al emitir."""
+    __tablename__ = "facturas"
+    __table_args__ = (UniqueConstraint("serie", "numero"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tienda_id: Mapped[int] = mapped_column(ForeignKey("tiendas.id"))
+    tipo: Mapped[str] = mapped_column(String(2))             # F1 completa, F2 simplificada, R1-R5 rectificativa
+    serie: Mapped[str] = mapped_column(String(20))
+    numero: Mapped[int] = mapped_column(Integer)
+    num_serie: Mapped[str] = mapped_column(String(60), unique=True)   # NumSerieFactura (serie-número)
+    fecha_expedicion: Mapped[date] = mapped_column(Date)
+    fecha_operacion: Mapped[date | None] = mapped_column(Date)
+    emisor: Mapped[dict] = mapped_column(JSON)               # nif, razon_social, domicilio
+    destinatario: Mapped[dict | None] = mapped_column(JSON)  # nombre, nif, domicilio (obligatorio en F1)
+    cliente_id: Mapped[int | None] = mapped_column(ForeignKey("clientes.id"))
+    descripcion: Mapped[str] = mapped_column(String(500))    # DescripcionOperacion
+    desglose: Mapped[list] = mapped_column(JSON)             # [{iva_x100, base_cent, cuota_cent}]
+    base_cent: Mapped[int] = mapped_column(Integer)
+    cuota_cent: Mapped[int] = mapped_column(Integer)
+    total_cent: Mapped[int] = mapped_column(Integer)
+    forma_pago: Mapped[str | None] = mapped_column(String(20))
+    rectificada_id: Mapped[int | None] = mapped_column(ForeignKey("facturas.id"))
+    tipo_rectificacion: Mapped[str | None] = mapped_column(String(1))  # S sustitución | I diferencias
+    motivo: Mapped[str | None] = mapped_column(String(250))
+    estado: Mapped[str] = mapped_column(String(12), default="emitida")  # emitida | rectificada | anulada
+    modo_verifactu: Mapped[str] = mapped_column(String(12), default="desactivado")  # modo al emitir
+    creado_por: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
+    creado: Mapped[datetime] = mapped_column(DateTime, default=ahora)
+    lineas: Mapped[list["FacturaLinea"]] = relationship(lazy="selectin", order_by="FacturaLinea.id")
+
+
+class FacturaLinea(Base):
+    __tablename__ = "factura_lineas"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    factura_id: Mapped[int] = mapped_column(ForeignKey("facturas.id"))
+    trabajo_id: Mapped[int | None] = mapped_column(ForeignKey("trabajos.id"))
+    descripcion: Mapped[str] = mapped_column(String(250))
+    cantidad: Mapped[int] = mapped_column(Integer, default=1)
+    precio_cent: Mapped[int] = mapped_column(Integer)        # unitario, IVA incluido, antes de descuento
+    descuento_cent: Mapped[int] = mapped_column(Integer, default=0)
+    iva_x100: Mapped[int] = mapped_column(Integer)
+    base_cent: Mapped[int] = mapped_column(Integer)
+    cuota_cent: Mapped[int] = mapped_column(Integer)
+    total_cent: Mapped[int] = mapped_column(Integer)
+
+
+class RegistroFacturacion(Base):
+    """Registro de facturación (alta o anulación) encadenado por huella SHA-256, listo para VERI*FACTU.
+    La cadena es única por emisor (NIF) y nunca se modifica: solo cambia el estado de envío."""
+    __tablename__ = "registros_facturacion"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tipo: Mapped[str] = mapped_column(String(10))            # alta | anulacion
+    factura_id: Mapped[int] = mapped_column(ForeignKey("facturas.id"))
+    nif_emisor: Mapped[str] = mapped_column(String(20))
+    num_serie: Mapped[str] = mapped_column(String(60))
+    fecha_expedicion: Mapped[date] = mapped_column(Date)
+    anterior_id: Mapped[int | None] = mapped_column(ForeignKey("registros_facturacion.id"))
+    huella_anterior: Mapped[str | None] = mapped_column(String(64))
+    huella: Mapped[str] = mapped_column(String(64))
+    fecha_hora_gen: Mapped[str] = mapped_column(String(32))  # ISO 8601 con huso, tal cual entra en la huella
+    subsanacion: Mapped[bool] = mapped_column(Boolean, default=False)
+    estado_envio: Mapped[str] = mapped_column(String(24), default="pendiente")
+    # pendiente | no_aplica | enviado | correcto | aceptado_con_errores | incorrecto
+    csv_aeat: Mapped[str | None] = mapped_column(String(40))
+    respuesta: Mapped[str | None] = mapped_column(Text)
+    intentos: Mapped[int] = mapped_column(Integer, default=0)
+    enviado: Mapped[datetime | None] = mapped_column(DateTime)
     creado: Mapped[datetime] = mapped_column(DateTime, default=ahora)

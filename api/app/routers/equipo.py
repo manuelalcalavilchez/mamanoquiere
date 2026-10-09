@@ -102,10 +102,16 @@ def borrar_regla(rid: int, db: Session = Depends(get_db)):
 def simular(usuario_id: int, tipo_servicio: TipoServicio, importe_cent: int, tienda_id: int | None = None,
             db: Session = Depends(get_db)):
     """Lo usa el formulario de trabajo para mostrar el reparto antes de guardar."""
+    from ..routers.ajustes import obtener
+    from ..services.comisiones import reparto_completo
+    from ..services.fiscal import config_fiscal
+
     u = db.get(Usuario, usuario_id) or _404()
-    pct = porcentaje_para(db, u, tipo_servicio, tienda_id)
-    prof, est = repartir(importe_cent, pct)
-    return RepartoPreview(porcentaje=pct, profesional_cent=prof, estudio_cent=est)
+    try:
+        r = reparto_completo(db, config_fiscal(obtener(db)), u, tipo_servicio, tienda_id, importe_cent)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return RepartoPreview(**r)
 
 
 def _404():

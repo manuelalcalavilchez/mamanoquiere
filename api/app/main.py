@@ -5,11 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings
-from .db import Base, engine
-from .routers import (ajustes, auth, caja, citas, clientes, consentimientos, equipo, leads, mensajes, publico,
-                      trabajos)
+from .db import SessionLocal, engine
+from .migraciones import migrar
+from .routers import (ajustes, auth, caja, citas, clientes, consentimientos, equipo, facturacion, leads, mensajes,
+                      publico, trabajos)
 
-Base.metadata.create_all(engine)  # tablas nuevas; para cambios de columnas usar Alembic
+migrar(engine, SessionLocal)  # tablas nuevas + columnas que falten + datos fiscales de trabajos antiguos
 
 if settings.admin_email and settings.admin_password:
     from .seed import main as _seed
@@ -19,7 +20,8 @@ app = FastAPI(title="Mamanoquiere — API", version="1.0.0", root_path=settings.
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins.split(","), allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
 
-for r in (auth, ajustes, equipo, clientes, citas, trabajos, caja, consentimientos, mensajes, leads, publico):
+for r in (auth, ajustes, equipo, clientes, citas, trabajos, caja, consentimientos, mensajes, leads, publico,
+          facturacion):
     app.include_router(r.router)
 
 # Solo fotos del portfolio/trabajos; los PDF de consentimiento se sirven con login

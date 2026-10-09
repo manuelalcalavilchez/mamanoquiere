@@ -7,6 +7,7 @@ import { ClienteDetalle, Clientes } from "./Clientes";
 import Comisiones from "./Comisiones";
 import Consentimiento from "./Consentimiento";
 import Equipo from "./Equipo";
+import Facturacion from "./Facturacion";
 import Layout from "./Layout";
 import Login from "./Login";
 import Mensajes from "./Mensajes";
@@ -37,6 +38,7 @@ export default function AppRoutes() {
             <Route path="consentimiento" element={<Consentimiento />} />
             <Route path="portfolio" element={<Portfolio />} />
             <Route path="mensajes" element={<SoloGestion><Mensajes /></SoloGestion>} />
+            <Route path="facturacion" element={<SoloGestion><Facturacion /></SoloGestion>} />
             <Route path="comisiones" element={<SoloGestion><Comisiones /></SoloGestion>} />
             <Route path="equipo" element={<SoloGestion admin><Equipo /></SoloGestion>} />
             <Route path="ajustes" element={<SoloGestion admin><Ajustes /></SoloGestion>} />

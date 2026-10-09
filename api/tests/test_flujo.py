@@ -39,7 +39,9 @@ def test_flujo_completo(client, admin):
                                                             "usuario_id": nerea["id"]})
     sim = client.get("/comisiones/simular", headers=tn, params={
         "usuario_id": kenji["id"], "tipo_servicio": "tatuaje", "importe_cent": 50000}).json()
-    assert sim == {"porcentaje": 60, "profesional_cent": 30000, "estudio_cent": 20000}
+    assert {k: sim[k] for k in ("porcentaje", "profesional_cent", "estudio_cent")} == \
+        {"porcentaje": 60, "profesional_cent": 30000, "estudio_cent": 20000}
+    assert (sim["base_cent"], sim["cuota_iva_cent"]) == (41322, 8678)  # 500 € con 21 % incluido
 
     cli = client.post("/clientes", headers=tn, json={"nombre": "Sergio M.", "email": "s@x.com",
                                                     "telefono": "600000000", "acepta_comunicaciones": True}).json()

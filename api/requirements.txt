@@ -9,4 +9,5 @@ bcrypt==4.*
 python-multipart==0.0.*
 reportlab==4.*
 httpx==0.27.*
-
+tzdata==2025.*
+cryptography==44.*

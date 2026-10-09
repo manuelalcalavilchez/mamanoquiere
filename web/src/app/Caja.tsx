@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { abrirArchivo, api } from "../lib/api";
-import { euros, fechaLarga, hoyISO, PAGOS, ROLES } from "../lib/format";
+import { eur2, euros, fechaLarga, hoyISO, PAGOS, pctIva, ROLES } from "../lib/format";
 import { useAuth } from "./auth";
 import { Cargando, useAviso, useDatos } from "./ui";
 
@@ -40,9 +41,18 @@ export default function Caja() {
               <div className="a-kpi"><span>Facturado</span><strong>{euros(r.facturado_cent)}</strong></div>
               <div className="a-kpi"><span>A pagar al equipo</span><strong>{euros(r.profesionales_cent)}</strong></div>
               <div className="a-kpi"><span>Para el estudio</span><strong>{euros(r.estudio_cent)}</strong></div>
+              {r.iva && <div className="a-kpi"><span>IVA incluido</span><strong>{euros(r.cuota_iva_cent)}</strong>
+                <small style={{ color: "var(--gris)" }}>{r.iva.map((g: any) => `Base ${pctIva(g.iva_x100)}: ${eur2(g.base_cent)}`).join(" · ")}</small></div>}
+              {r.descuentos_cent > 0 && <div className="a-kpi"><span>Descuentos aplicados</span><strong>{euros(r.descuentos_cent)}</strong></div>}
               <div className="a-kpi"><span>Por forma de pago</span><strong style={{ fontSize: 16, fontFamily: "inherit" }}>
                 {Object.entries(r.por_forma_pago).map(([k, v]: any) => `${PAGOS[k]} ${euros(v)}`).join(" · ") || "—"}
               </strong></div>
+            </div>
+          )}
+          {gestion && r.sin_factura > 0 && (
+            <div className="a-tarjeta" style={{ borderColor: "#E9B949", background: "#FFF8E6", flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+              <span><strong>{r.sin_factura} {r.sin_factura === 1 ? "trabajo" : "trabajos"} sin ticket ni factura.</strong> Emítelos antes de cerrar el día.</span>
+              <Link className="a-btn a-btn-sm" to="/app/facturacion">Ir a facturación</Link>
             </div>
           )}
           {r.personas.length === 0 ? <div className="a-vacio">No hay trabajos este día.</div> : (

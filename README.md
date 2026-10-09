@@ -35,6 +35,7 @@ Genera el secreto con `openssl rand -hex 32`.
 3. **Comisiones**: ajusta los porcentajes (por defecto: tatuaje 70 %, invitado 60 %, piercing 50 %, producto 10 %).
 4. **Personalización**: color de acento, imagen o vídeo de portada, preguntas frecuentes, textos legales revisados por la asesoría, valoración (solo si está verificada) y preguntas del consentimiento.
 5. Para enviar mensajes, rellena SMTP y/o Evolution API en el `.env` y vuelve a desplegar.
+6. **Facturación → Datos fiscales**: razón social, NIF y domicilio del estudio (sin ellos no se puede facturar), tipos de IVA y series. Ver [docs/FACTURACION.md](docs/FACTURACION.md).
 
 ## Copias de seguridad
 
@@ -51,7 +52,7 @@ El nombre real del volumen aparece en `docker volume ls`. Programa ambas copias 
 git pull && docker compose up -d --build
 ```
 
-Las tablas nuevas se crean solas. Si en el futuro cambian columnas de tablas existentes, habrá que añadir migraciones con Alembic.
+Al arrancar, la API crea las tablas nuevas, añade las columnas que falten a las existentes y completa los datos antiguos (por ejemplo, el IVA de los trabajos registrados antes de la facturación). Es idempotente. Haz copia de la base de datos antes de cada actualización.
 
 ## Desarrollo local
 
@@ -69,8 +70,8 @@ cd web && npm install && npm run dev
 
 | Rol | Ve |
 | --- | --- |
-| Administración | Todo, incluida Personalización, Equipo y reglas de comisión |
-| Encargado | Todo salvo Personalización y Equipo |
+| Administración | Todo, incluida Personalización, Equipo, reglas de comisión, datos fiscales, VERI*FACTU y anular facturas |
+| Encargado | Todo salvo Personalización y Equipo; emite tickets, facturas y rectificativas y gestiona descuentos |
 | Tatuador, piercer, invitado | Su agenda, sus trabajos, su línea de caja, clientes, consentimiento, su portfolio y las solicitudes que tenga asignadas |
 
 ## Limitaciones conocidas
@@ -79,3 +80,4 @@ cd web && npm install && npm run dev
 - El límite antispam y los envíos de mensajes viven en memoria: la API debe correr con una sola réplica.
 - Los PDF de consentimiento (datos de salud) se guardan en el volumen `media` sin cifrar; protege el servidor y las copias.
 - Los textos legales y las respuestas de preguntas frecuentes los debe aportar el estudio; la web no los inventa.
+- VERI*FACTU: registros, huellas, QR y XML están implementados; el envío a la AEAT no se ha probado todavía en su entorno de pruebas (ver docs/FACTURACION.md).

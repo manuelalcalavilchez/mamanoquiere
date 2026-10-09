@@ -6,7 +6,7 @@ import { Campo, useAviso } from "./ui";
 const MODULOS: Record<string, string> = {
   web_leads: "Solicitudes web", agenda: "Agenda", trabajos: "Trabajos", caja: "Cierre de caja", clientes: "Clientes",
   consentimiento: "Consentimiento digital", mensajes: "Mensajes a clientes", portfolio: "Portfolio público",
-  piercing: "Piercing", productos: "Venta de productos", invitados: "Artistas invitados",
+  piercing: "Piercing", productos: "Venta de productos", invitados: "Artistas invitados", facturacion: "Facturación e IVA",
 };
 const ACENTOS = [["#D52B1E", "Rojo intenso"], ["#C2410C", "Naranja coral"], ["#2F5BFF", "Azul eléctrico"], ["#17161A", "Negro"]];
 const LEGALES: Record<string, string> = { privacidad: "Política de privacidad", cookies: "Política de cookies", aviso: "Aviso legal" };

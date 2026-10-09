@@ -30,7 +30,7 @@ MODULOS = {
     "web_leads": True,
     "agenda": True, "trabajos": True, "caja": True, "clientes": True,
     "consentimiento": True, "mensajes": True, "portfolio": True,
-    "piercing": True, "productos": True, "invitados": True,
+    "piercing": True, "productos": True, "invitados": True, "facturacion": True,
 }
 PREGUNTAS = [
     {"id": "alergias", "texto": "Alergias (látex, metales, tintas)", "tipo": "si_no", "detalle": True},
@@ -58,3 +58,28 @@ TIENDAS = [
      "horario": [{"dias": "Mo-Su", "abre": "11:00", "cierra": "01:00"}],
      "servicios": ["tattoo", "piercing_corporal", "piercing_oreja", "piercing_nariz"]},
 ]
+
+# Facturación. Los datos fiscales están VACÍOS a propósito: hay que rellenarlos con los del estudio.
+FACTURACION = {
+    "emisor": {"nif": "", "razon_social": "", "domicilio": "", "codigo_postal": "", "localidad": "Eivissa",
+               "provincia": "Illes Balears"},
+    # IVA por tipo de servicio en centésimas (2100 = 21 %). PENDIENTE DE VALIDAR con la asesoría.
+    "iva": {"tatuaje": 2100, "piercing": 2100, "producto": 2100},
+    "precios_con_iva": True,          # el precio que se cobra al cliente ya lleva IVA
+    "comision_sobre": "total",        # total (IVA incluido, como hasta ahora) | base (sin IVA)
+    "limite_simplificada_cent": 40000,  # 400 € IVA incl.: por encima, factura completa con NIF del cliente
+    "descuento_max_pct": 15,          # tope de descuento manual para quien no es gestión
+    "series": {"F1": "F", "F2": "T", "R": "R"},  # + prefijo de tienda + año: T P 26 → TP26-00001
+    "prefijo_tienda": {},             # {"1": "P", "2": "B"}; si falta, inicial del slug
+    "texto_pie": "",
+    "verifactu": {
+        "modo": "preparado",          # desactivado | preparado (registra y encadena, no envía) | pruebas | produccion
+        "envio_automatico": False,
+        "certificado_pfx": "",        # ruta dentro del contenedor (volumen), nunca en el repo
+        "certificado_password_env": "VERIFACTU_CERT_PASSWORD",
+        "sistema": {                  # SistemaInformatico (datos del productor del software)
+            "nombre_razon": "", "nif": "", "nombre_sistema": "Mamanoquiere Gestión", "id_sistema": "MQ",
+            "version": "1.0", "numero_instalacion": "1",
+        },
+    },
+}

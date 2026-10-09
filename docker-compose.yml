@@ -37,6 +37,7 @@ services:
       EVOLUTION_URL: ${EVOLUTION_URL:-}
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-}
       EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:-}
+      VERIFACTU_CERT_PASSWORD: ${VERIFACTU_CERT_PASSWORD:-}
     volumes:
       - media:/data/media
 

@@ -33,3 +33,15 @@ export const ESTADOS_LEAD: Record<string, string> = {
   presupuesto_enviado: "Presupuesto enviado", cita_propuesta: "Cita propuesta", cita_confirmada: "Cita confirmada",
   realizado: "Realizado", cancelado: "Cancelado", descartado: "Descartado",
 };
+
+/** Importe con dos decimales siempre (facturas). */
+export const eur2 = (cent: number) => (cent / 100).toLocaleString("es-ES", { style: "currency", currency: "EUR", minimumFractionDigits: 2 });
+export const pctIva = (x100: number) => `${(x100 / 100).toLocaleString("es-ES")} %`;
+export const fechaCorta = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+export const TIPOS_FACTURA: Record<string, string> = {
+  F1: "Factura", F2: "Ticket", R1: "Rectificativa", R2: "Rectificativa", R3: "Rectificativa", R4: "Rectificativa", R5: "Rect. ticket",
+};
+export const ESTADOS_ENVIO: Record<string, string> = {
+  pendiente: "Pendiente de envío", no_aplica: "Registrado (sin envío)", enviado: "Enviado", correcto: "Aceptado por la AEAT",
+  aceptado_con_errores: "Aceptado con errores", incorrecto: "Rechazado",
+};
