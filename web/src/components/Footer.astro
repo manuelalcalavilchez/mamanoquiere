@@ -1,0 +1,22 @@
+---
+import { useT, type Lang } from '../i18n';
+import { getBusiness } from '../lib/db';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = useT(lang);
+const legal = `/${lang}/${t('routes.legal')}`;
+const biz = await getBusiness();
+const ig = biz?.instagram?.replace(/^@/, '');
+---
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Mamanoquiere Tattoo Ibiza · Puerto · Beach</p>
+    {ig && <p><a href={`https://www.instagram.com/${ig}/`} rel="noopener">Instagram @{ig}</a></p>}
+    <ul>
+      <li><a href={`${legal}/${t('routes.notice')}`}>{t('footer.legal')}</a></li>
+      <li><a href={`${legal}/${t('routes.privacy')}`}>{t('footer.privacy')}</a></li>
+      <li><a href={`${legal}/${t('routes.cookies')}`}>{t('footer.cookies')}</a></li>
+      <li><button type="button" onclick="window.openConsent && window.openConsent()">{t('footer.cookieSettings')}</button></li>
+    </ul>
+  </div>
+</footer>

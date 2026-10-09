@@ -1,0 +1,12 @@
+---
+import { img, srcset } from '../lib/media';
+import type { Work } from '../lib/db';
+interface Props { work: Work; sizes?: string; eager?: boolean; caption?: string }
+const { work, sizes = '(min-width: 900px) 33vw, 50vw', eager = false, caption } = Astro.props;
+---
+<figure data-style={work.style ?? ''}>
+  <img src={img(work.file, 700)} srcset={srcset(work.file)} sizes={sizes} alt={work.alt}
+       width={work.width ?? 800} height={work.height ?? 1000}
+       loading={eager ? 'eager' : 'lazy'} fetchpriority={eager ? 'high' : 'auto'} decoding="async" />
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>

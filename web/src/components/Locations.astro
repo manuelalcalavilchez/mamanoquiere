@@ -1,0 +1,48 @@
+---
+import { useT, type Lang } from '../i18n';
+import { visible, type Location } from '../lib/db';
+import Pending from './Pending.astro';
+interface Props { lang: Lang; locations: Location[]; reviews: { location: string; source: string; rating: string; review_count: number; source_url: string | null; fetched_at: Date }[] }
+const { lang, locations, reviews } = Astro.props;
+const t = useT(lang);
+const days: Record<string, Record<string, string>> = {
+  es: { Mo: 'Lun', Tu: 'Mar', We: 'Mié', Th: 'Jue', Fr: 'Vie', Sa: 'Sáb', Su: 'Dom' },
+  en: { Mo: 'Mon', Tu: 'Tue', We: 'Wed', Th: 'Thu', Fr: 'Fri', Sa: 'Sat', Su: 'Sun' },
+};
+---
+<section class="section wrap" id="estudios" aria-labelledby="loc-title">
+  <div class="section-head"><h2 id="loc-title">{t('locations.title')}</h2></div>
+  <div class="locations">
+    {locations.map((l) => {
+      const ok = visible(l);
+      const rv = reviews.filter((r) => r.location === l.slug);
+      return (
+        <article class="location">
+          <h3>{l.name.replace(/^Mamanoquiere\s*(Tattoo\s*)?/i, '')}</h3>
+          {ok && l.street ? (
+            <address>{l.street}<br />{[l.postal_code, l.locality].filter(Boolean).join(' ')}</address>
+          ) : <p class="muted">{t('locations.pendingData')}</p>}
+          {l.validation !== 'validado' && <Pending lang={lang} />}
+          {ok && l.opening_hours && (
+            <dl class="hours" aria-label={t('locations.hours')}>
+              {l.opening_hours.map((h) => <><dt>{h.days.length === 7 ? (lang === 'es' ? 'Todos los días' : 'Every day') : h.days.map((d) => days[lang][d] ?? d).join(', ')}</dt><dd>{h.opens}–{h.closes}</dd></>)}
+            </dl>
+          )}
+          {ok && l.seasonal_note && <p class="muted">{l.seasonal_note}</p>}
+          {rv.map((r) => (
+            <p class="muted">
+              {r.source_url ? <a href={r.source_url} rel="noopener">{r.source}</a> : r.source}: {Number(r.rating).toLocaleString(lang)} / 5 ({r.review_count})
+            </p>
+          ))}
+          {ok && (
+            <div class="actions">
+              {l.phone && <a class="btn ghost" href={`tel:${l.phone}`}>{t('locations.call')}</a>}
+              {l.whatsapp && <a class="btn ghost" href={`https://wa.me/${l.whatsapp}`} rel="noopener">{t('locations.whatsapp')}</a>}
+              {l.maps_url && <a class="btn ghost" href={l.maps_url} rel="noopener">{t('locations.map')}</a>}
+            </div>
+          )}
+        </article>
+      );
+    })}
+  </div>
+</section>

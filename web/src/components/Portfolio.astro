@@ -1,0 +1,37 @@
+---
+import { useT, type Lang } from '../i18n';
+import type { Artist, Work as W } from '../lib/db';
+import Work from './Work.astro';
+interface Props { lang: Lang; works: W[]; artists: Artist[]; styles: { slug: string; name: string }[] }
+const { lang, works, artists, styles } = Astro.props;
+const t = useT(lang);
+const byId = new Map(artists.map((a) => [a.id, a.display_name]));
+const used = styles.filter((s) => works.some((w) => w.style === s.slug));
+---
+<section class="section wrap" id="portfolio" aria-labelledby="portfolio-title">
+  <div class="section-head"><h2 id="portfolio-title">{t('portfolio.title')}</h2></div>
+  {works.length === 0 ? <p class="empty">{t('portfolio.empty')}</p> : (
+    <>
+      {used.length > 1 && (
+        <div class="filters" role="group" aria-label={t('artists.filterStyle')} data-filter-group="portfolio">
+          <button class="chip" type="button" aria-pressed="true" data-value="">{t('portfolio.all')}</button>
+          {used.map((s) => <button class="chip" type="button" aria-pressed="false" data-value={s.slug}>{s.name}</button>)}
+        </div>
+      )}
+      <div class="masonry" data-filter-target="portfolio">
+        {works.map((w) => <Work work={w} caption={(w.artist_id ? byId.get(w.artist_id) : undefined)} />)}
+      </div>
+    </>
+  )}
+</section>
+<script>
+  document.querySelectorAll<HTMLElement>('[data-filter-group="portfolio"]').forEach((g) => {
+    const target = document.querySelector('[data-filter-target="portfolio"]')!;
+    g.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
+      if (!b) return;
+      g.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      target.querySelectorAll<HTMLElement>('figure').forEach((f) => (f.hidden = !!b.dataset.value && f.dataset.style !== b.dataset.value));
+    });
+  });
+</script>

@@ -1,0 +1,15 @@
+---
+import Base from '../../../layouts/Base.astro';
+import ArtistIndex from '../../../components/ArtistIndex.astro';
+import { isLang, useT } from '../../../i18n';
+import { getArtists, getLocations, getStyles } from '../../../lib/db';
+
+const { lang, section } = Astro.params;
+if (!isLang(lang) || section !== useT(lang)('routes.artists')) return new Response(null, { status: 404 });
+const t = useT(lang);
+const [artists, styles, locations] = await Promise.all([getArtists(lang), getStyles(lang), getLocations()]);
+Astro.response.headers.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=600');
+---
+<Base lang={lang} title={t('artists.title')} description={`${t('artists.title')} — ${t('meta.description')}`}>
+  <ArtistIndex lang={lang} artists={artists} styles={styles} locations={locations} headingLevel={1} />
+</Base>

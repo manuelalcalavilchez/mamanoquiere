@@ -1,0 +1,100 @@
+---
+import '@fontsource/bodoni-moda/400.css';
+import '@fontsource/bodoni-moda/400-italic.css';
+import '@fontsource/bodoni-moda/600.css';
+import '@fontsource/karla/400.css';
+import '@fontsource/karla/500.css';
+import '../styles/global.css';
+import { langs, localizePath, useT, type Lang } from '../i18n';
+import { getBusiness, getLocations, visible, showPending } from '../lib/db';
+import MobileBar from '../components/MobileBar.astro';
+import ConsentBanner from '../components/ConsentBanner.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props { lang: Lang; title?: string; description?: string; image?: string; noindex?: boolean; jsonLd?: object[] }
+const { lang, title, description, image, noindex = false, jsonLd = [] } = Astro.props;
+const t = useT(lang);
+const site = Astro.site!;
+const path = Astro.url.pathname;
+const canonical = new URL(path, site).href;
+const pageTitle = title ? `${title} — Mamanoquiere Tattoo Ibiza` : t('meta.title');
+const pageDesc = description ?? t('meta.description');
+
+// JSON-LD por estudio: solo campos validados y existentes (nunca inventados)
+const locations = (await getLocations()).filter(visible);
+const biz = await getBusiness();
+const sameAs = [biz?.instagram && `https://www.instagram.com/${biz.instagram.replace(/^@/, '')}/`, biz?.website].filter(Boolean);
+const orgLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Mamanoquiere Tattoo Ibiza',
+  url: new URL(`/${lang}/`, site).href,
+  ...(sameAs.length && { sameAs }),
+  subOrganization: locations.map((l) => ({
+    '@type': 'TattooParlor',
+    name: l.name,
+    ...(l.phone && { telephone: l.phone }),
+    ...(l.street && {
+      address: { '@type': 'PostalAddress', streetAddress: l.street, postalCode: l.postal_code ?? undefined,
+        addressLocality: l.locality ?? undefined, addressRegion: l.region ?? undefined, addressCountry: l.country ?? 'ES' },
+    }),
+    ...(l.lat && l.lng && { geo: { '@type': 'GeoCoordinates', latitude: Number(l.lat), longitude: Number(l.lng) } }),
+    ...(l.maps_url && { hasMap: l.maps_url }),
+    ...(l.opening_hours && {
+      openingHoursSpecification: l.opening_hours.map((h) => ({ '@type': 'OpeningHoursSpecification', dayOfWeek: h.days, opens: h.opens, closes: h.closes })),
+    }),
+    areaServed: ['Ibiza', 'Eivissa'],
+  })),
+};
+const umamiUrl = import.meta.env.PUBLIC_UMAMI_URL;
+const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
+---
+<!doctype html>
+<html lang={lang}>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{pageTitle}</title>
+  <meta name="description" content={pageDesc} />
+  <link rel="canonical" href={canonical} />
+  {langs.map((l) => <link rel="alternate" hreflang={l} href={new URL(localizePath(path, lang, l), site).href} />)}
+  <link rel="alternate" hreflang="x-default" href={new URL(localizePath(path, lang, 'es'), site).href} />
+  {(noindex || showPending) && <meta name="robots" content="noindex" />}
+  <meta name="theme-color" content="#1c1814" />
+  <meta name="geo.region" content="ES-IB" />
+  <meta name="geo.placename" content="Ibiza / Eivissa" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content={pageTitle} />
+  <meta property="og:description" content={pageDesc} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:locale" content={lang === 'es' ? 'es_ES' : 'en_GB'} />
+  {image && <meta property="og:image" content={image} />}
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  {import.meta.env.PUBLIC_ASSETS_URL && <link rel="preconnect" href={import.meta.env.PUBLIC_ASSETS_URL} />}
+  <script type="application/ld+json" set:html={JSON.stringify(orgLd)} />
+  {jsonLd.map((j) => <script type="application/ld+json" set:html={JSON.stringify(j)} />)}
+</head>
+<body>
+  {showPending && <div class="demo-bar" role="note">{lang === 'es' ? 'Versión de demostración · contenido pendiente de validar por el estudio' : 'Demo version · content pending studio approval'}</div>}
+  <a class="skip" href="#main">{t('nav.skip')}</a>
+  <header class="wrap site-header">
+    <a class="mark" href={`/${lang}/`}>Mamanoquiere</a>
+    <nav aria-label="Principal">
+      <ul>
+        <li><a href={`/${lang}/#portfolio`}>{t('nav.portfolio')}</a></li>
+        <li><a href={`/${lang}/${t('routes.artists')}`}>{t('nav.artists')}</a></li>
+        <li><a href={`/${lang}/#estudios`}>{t('nav.locations')}</a></li>
+        <li><a href={`/${lang}/#cita`}>{t('nav.contact')}</a></li>
+      </ul>
+    </nav>
+    <a class="lang" href={localizePath(path, lang, lang === 'es' ? 'en' : 'es')} hreflang={lang === 'es' ? 'en' : 'es'}>{t('footer.lang')}</a>
+  </header>
+
+  <main id="main"><slot /></main>
+
+  <Footer lang={lang} />
+  <MobileBar lang={lang} locations={locations} />
+  <ConsentBanner lang={lang} umamiUrl={umamiUrl} umamiId={umamiId} />
+</body>
+</html>

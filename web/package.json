@@ -1,25 +1,19 @@
 {
   "name": "mamanoquiere-web",
-  "private": true,
-  "version": "1.0.0",
   "type": "module",
+  "private": true,
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "dev": "astro dev",
+    "build": "astro build",
+    "start": "node ./dist/server/entry.mjs",
+    "check": "astro check"
   },
   "dependencies": {
-    "@fontsource-variable/bricolage-grotesque": "^5.1.0",
-    "@fontsource-variable/dm-sans": "^5.1.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "@astrojs/node": "^9.0.0",
+    "@fontsource/bodoni-moda": "^5.0.0",
+    "@fontsource/karla": "^5.0.0",
+    "astro": "^5.0.0",
+    "postgres": "^3.4.0",
+    "zod": "^3.23.0"
   }
 }

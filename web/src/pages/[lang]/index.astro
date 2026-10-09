@@ -1,0 +1,35 @@
+---
+import Base from '../../layouts/Base.astro';
+import Hero from '../../components/Hero.astro';
+import Services from '../../components/Services.astro';
+import Portfolio from '../../components/Portfolio.astro';
+import ArtistIndex from '../../components/ArtistIndex.astro';
+import Locations from '../../components/Locations.astro';
+import ContactForm from '../../components/ContactForm.astro';
+import Faq from '../../components/Faq.astro';
+import { isLang } from '../../i18n';
+import { getArtists, getFaqs, getLocations, getReviews, getServices, getStyles, getWorks, visible } from '../../lib/db';
+
+const { lang } = Astro.params;
+if (!isLang(lang)) return new Response(null, { status: 404 });
+
+const [artists, works, services, styles, locations, faqs, reviews] = await Promise.all([
+  getArtists(lang), getWorks(lang, { featured: true, limit: 30 }), getServices(lang), getStyles(lang),
+  getLocations(), getFaqs(lang), getReviews(),
+]);
+const pubArtists = artists.filter(visible);
+const faqLd = faqs.length ? [{
+  '@context': 'https://schema.org', '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.question, acceptedAnswer: { '@type': 'Answer', text: f.answer } })),
+}] : [];
+Astro.response.headers.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=600');
+---
+<Base lang={lang} jsonLd={faqLd}>
+  <Hero lang={lang} works={works} artists={artists} />
+  <Services lang={lang} services={services} />
+  <Portfolio lang={lang} works={works} artists={artists} styles={styles} />
+  <ArtistIndex lang={lang} artists={artists} styles={styles} locations={locations} filters={false} />
+  <Locations lang={lang} locations={locations} reviews={reviews} />
+  <ContactForm lang={lang} artists={pubArtists} locations={locations} />
+  <Faq lang={lang} faqs={faqs} />
+</Base>

@@ -1,0 +1,32 @@
+---
+import { useT, type Lang } from '../i18n';
+import type { Artist, Work as W } from '../lib/db';
+import Work from './Work.astro';
+interface Props { lang: Lang; works: W[]; artists: Artist[] }
+const { lang, works, artists } = Astro.props;
+const t = useT(lang);
+const byId = new Map(artists.map((a) => [a.id, a.display_name]));
+---
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap">
+    <h1 id="hero-title" class="wordmark" aria-label="Mamanoquiere Tattoo Ibiza">
+      <span aria-hidden="true">Mama</span><span aria-hidden="true">no</span><span aria-hidden="true">quiere</span>
+      <small aria-hidden="true">Tattoo Ibiza</small>
+    </h1>
+    <div class="hero-copy">
+      <p>{t('hero.lead')}</p>
+      <div class="hero-actions">
+        <a class="btn" href="#cita">{t('hero.cta')}</a>
+        <a class="btn ghost" href="#portfolio">{t('hero.secondary')}</a>
+      </div>
+    </div>
+  </div>
+  {works.length > 0 && (
+    <div class="strip" role="list" aria-label={t('portfolio.title')}>
+      {works.slice(0, 8).map((w, i) => (
+        <div role="listitem"><Work work={w} eager={i < 2} sizes="(min-width: 900px) 360px, 68vw"
+          caption={(w.artist_id ? byId.get(w.artist_id) : undefined) ? `${t('portfolio.by')} ${(w.artist_id ? byId.get(w.artist_id) : undefined)}` : undefined} /></div>
+      ))}
+    </div>
+  )}
+</section>

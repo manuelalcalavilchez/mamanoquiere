@@ -1,0 +1,50 @@
+---
+import { useT, type Lang } from '../i18n';
+import type { Location } from '../lib/db';
+interface Props { lang: Lang; locations: Location[] }
+const { lang, locations } = Astro.props;
+const t = useT(lang);
+const withPhone = locations.filter((l) => l.phone);
+const withWa = locations.filter((l) => l.whatsapp);
+const waText = encodeURIComponent(lang === 'es' ? 'Hola, quiero información sobre una cita.' : "Hi, I'd like info about an appointment.");
+---
+<nav class="mobile-bar" aria-label={t('nav.contact')}>
+  {withPhone.length === 1
+    ? <a href={`tel:${withPhone[0].phone}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>{t('bar.call')}</a>
+    : <button type="button" data-sheet="call" disabled={withPhone.length === 0}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>{t('bar.call')}</button>}
+  {withWa.length === 1
+    ? <a href={`https://wa.me/${withWa[0].whatsapp}?text=${waText}`} rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/></svg>{t('bar.whatsapp')}</a>
+    : <button type="button" data-sheet="wa" disabled={withWa.length === 0}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/></svg>{t('bar.whatsapp')}</button>}
+  <a class="primary" href={`/${lang}/#cita`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="1"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>{t('bar.book')}</a>
+</nav>
+
+{withPhone.length > 1 && (
+  <div class="sheet" id="sheet-call" hidden role="dialog" aria-label={t('bar.choose')}>
+    <p>{t('bar.choose')}</p>
+    {withPhone.map((l) => <a class="btn ghost" href={`tel:${l.phone}`}>{l.name}</a>)}
+  </div>
+)}
+{withWa.length > 1 && (
+  <div class="sheet" id="sheet-wa" hidden role="dialog" aria-label={t('bar.choose')}>
+    <p>{t('bar.choose')}</p>
+    {withWa.map((l) => <a class="btn ghost" href={`https://wa.me/${l.whatsapp}?text=${waText}`} rel="noopener">{l.name}</a>)}
+  </div>
+)}
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-sheet]').forEach((b) => {
+    const sheet = document.getElementById(`sheet-${b.dataset.sheet}`);
+    if (!sheet) return;
+    b.setAttribute('aria-expanded', 'false');
+    b.addEventListener('click', () => {
+      const open = sheet.hidden;
+      document.querySelectorAll<HTMLElement>('.sheet').forEach((s) => (s.hidden = true));
+      sheet.hidden = !open;
+      b.setAttribute('aria-expanded', String(open));
+      if (open) sheet.querySelector('a')?.focus();
+    });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll<HTMLElement>('.sheet').forEach((s) => (s.hidden = true));
+  });
+</script>

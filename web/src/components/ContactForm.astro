@@ -1,0 +1,148 @@
+---
+import { useT, type Lang } from '../i18n';
+import type { Artist, Location } from '../lib/db';
+interface Props { lang: Lang; artists: Artist[]; locations: Location[]; preselectArtist?: string }
+const { lang, artists, locations, preselectArtist } = Astro.props;
+const t = useT(lang);
+const status = Astro.url.searchParams.get('enviado');
+const privacyHref = `/${lang}/${t('routes.legal')}/${t('routes.privacy')}`;
+const msgs = { ok: t('form.ok'), error: t('form.error'), sending: t('form.sending'), submit: t('form.submit'),
+  required: t('form.required'), invalidEmail: t('form.invalidEmail'), needContact: t('form.needContact'), needPrivacy: t('form.needPrivacy') };
+---
+<section class="section wrap" id="cita" aria-labelledby="form-title">
+  <div class="section-head">
+    <h2 id="form-title">{t('form.title')}</h2>
+    <p class="muted">{t('form.intro')}</p>
+  </div>
+
+  <!-- Funciona sin JS (POST + redirección); con JS se envía por fetch con validación en línea -->
+  <form class="form" method="post" action="/api/lead" novalidate data-lead-form>
+    <input type="hidden" name="lang" value={lang} />
+    <input type="hidden" name="ts" value={Date.now()} />
+    <input type="hidden" name="utm" value="" />
+    <div class="hp" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off" /></label></div>
+
+    <div class="field">
+      <label for="f-name">{t('form.name')} *</label>
+      <input id="f-name" name="name" autocomplete="name" required maxlength="120" aria-describedby="e-name" />
+      <span class="err" id="e-name" aria-live="polite"></span>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="f-email">{t('form.email')}</label>
+        <input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="160" aria-describedby="h-contact e-email" />
+        <span class="err" id="e-email" aria-live="polite"></span>
+      </div>
+      <div class="field">
+        <label for="f-phone">{t('form.phone')}</label>
+        <input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="30" aria-describedby="h-contact e-phone" />
+        <span class="err" id="e-phone" aria-live="polite"></span>
+      </div>
+    </div>
+    <p class="hint muted" id="h-contact" style="margin:-0.6rem 0 0;font-size:.8rem">{t('form.contactHint')}</p>
+
+    <div class="row">
+      <div class="field">
+        <label for="f-service">{t('form.service')} *</label>
+        <select id="f-service" name="service" required>
+          <option value="tattoo">Tattoo</option>
+          <option value="piercing">Piercing</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-location">{t('form.location')} *</label>
+        <select id="f-location" name="location" required>
+          {locations.map((l) => <option value={l.slug}>{l.name.replace(/^Mamanoquiere\s*(Tattoo\s*)?/i, '')}</option>)}
+        </select>
+      </div>
+    </div>
+
+    {artists.length > 0 && (
+      <div class="field">
+        <label for="f-artist">{t('form.artist')}</label>
+        <select id="f-artist" name="artist">
+          <option value="">{t('form.anyArtist')}</option>
+          {artists.map((a) => <option value={a.slug} selected={a.slug === preselectArtist}>{a.display_name}</option>)}
+        </select>
+      </div>
+    )}
+
+    <div class="field">
+      <label for="f-msg">{t('form.message')}</label>
+      <span class="hint" id="h-msg">{t('form.messageHint')}</span>
+      <textarea id="f-msg" name="message" maxlength="3000" aria-describedby="h-msg"></textarea>
+    </div>
+
+    <div class="row">
+      <div class="field"><label for="f-zone">{t('form.zone')}</label><input id="f-zone" name="body_zone" maxlength="120" /></div>
+      <div class="field"><label for="f-size">{t('form.size')}</label><input id="f-size" name="size" maxlength="60" /></div>
+    </div>
+    <div class="field"><label for="f-dates">{t('form.dates')}</label><input id="f-dates" name="dates" maxlength="200" /></div>
+
+    <label class="check">
+      <input type="checkbox" name="privacy_accepted" value="true" required aria-describedby="e-privacy" />
+      <span>{t('form.privacy')} <a href={privacyHref}>{t('form.privacyLink')}</a> *</span>
+    </label>
+    <span class="err" id="e-privacy" aria-live="polite"></span>
+    <label class="check">
+      <input type="checkbox" name="marketing" value="true" />
+      <span>{t('form.marketing')}</span>
+    </label>
+    <p class="layered">{t('form.layered')}</p>
+
+    <div>
+      <button class="btn" type="submit">{t('form.submit')}</button>
+    </div>
+    <p class={`form-status ${status === '1' ? 'ok' : status === '0' ? 'error' : ''}`} role="status" aria-live="polite">
+      {status === '1' ? t('form.ok') : status === '0' ? t('form.error') : ''}
+    </p>
+  </form>
+</section>
+
+<script define:vars={{ msgs }}>
+  const form = document.querySelector('[data-lead-form]');
+  if (form) {
+    const utm = Object.fromEntries([...new URLSearchParams(location.search)].filter(([k]) => k.startsWith('utm_')));
+    form.elements.utm.value = Object.keys(utm).length ? JSON.stringify(utm) : '';
+    const statusEl = form.querySelector('.form-status');
+    const btn = form.querySelector('button[type=submit]');
+    const setErr = (name, msg) => {
+      const input = form.elements[name];
+      const el = document.getElementById(`e-${name === 'privacy_accepted' ? 'privacy' : name}`);
+      if (input) input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+      if (el) el.textContent = msg || '';
+    };
+    const validate = () => {
+      const f = form.elements; let first = null;
+      ['name', 'email', 'phone', 'privacy_accepted'].forEach((n) => setErr(n, ''));
+      const fail = (n, m) => { setErr(n, m); first ??= f[n]; };
+      if (!f.name.value.trim()) fail('name', msgs.required);
+      if (f.email.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.value)) fail('email', msgs.invalidEmail);
+      if (!f.email.value.trim() && !f.phone.value.trim()) fail('email', msgs.needContact);
+      if (!f.privacy_accepted.checked) fail('privacy_accepted', msgs.needPrivacy);
+      first?.focus();
+      return !first;
+    };
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!validate()) return;
+      btn.disabled = true; btn.textContent = msgs.sending; statusEl.className = 'form-status'; statusEl.textContent = '';
+      try {
+        const res = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          Object.entries(data.fields ?? {}).forEach(([k, v]) => setErr(k, v));
+          throw new Error();
+        }
+        form.reset();
+        statusEl.className = 'form-status ok'; statusEl.textContent = msgs.ok;
+        window.umami?.track?.('lead', { service: data.service, location: data.location });
+      } catch {
+        statusEl.className = 'form-status error'; statusEl.textContent = msgs.error;
+      } finally {
+        btn.disabled = false; btn.textContent = msgs.submit;
+      }
+    });
+  }
+</script>

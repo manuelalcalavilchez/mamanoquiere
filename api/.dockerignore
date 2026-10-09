@@ -1,5 +1,0 @@
-tests
-__pycache__
-*.db
-media
-.pytest_cache

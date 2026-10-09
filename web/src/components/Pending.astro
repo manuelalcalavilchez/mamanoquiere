@@ -1,0 +1,7 @@
+---
+import { showPending } from '../lib/db';
+import { useT, type Lang } from '../i18n';
+interface Props { lang: Lang; note?: string }
+const { lang, note } = Astro.props;
+---
+{showPending && <span class="pending">{note ?? useT(lang)('pending')}</span>}

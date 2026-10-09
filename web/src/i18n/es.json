@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "title": "Mamanoquiere Tattoo Ibiza — Tatuajes y piercing en Eivissa",
+    "description": "Estudio de tatuaje y piercing en Ibiza con dos locales: Puerto y Beach. Mira el trabajo de nuestros artistas y pide tu cita."
+  },
+  "routes": { "artists": "artistas", "legal": "legal", "notice": "aviso-legal", "privacy": "privacidad", "cookies": "cookies" },
+  "nav": { "portfolio": "Portfolio", "artists": "Artistas", "services": "Servicios", "locations": "Estudios", "contact": "Pedir cita", "skip": "Saltar al contenido" },
+  "hero": { "lead": "Tatuaje y piercing en Ibiza. Dos estudios, Puerto y Beach.", "cta": "Pedir cita", "secondary": "Ver trabajos" },
+  "services": { "title": "Qué hacemos", "from": "Desde", "ask": "Precio según diseño. Te lo damos al ver tu idea." },
+  "portfolio": { "title": "Trabajos recientes", "empty": "El portfolio se está cargando desde el estudio.", "all": "Todos", "by": "por" },
+  "artists": { "title": "Artistas", "intro": "Elige por estilo o por estudio, o deja que te recomendemos.", "guest": "Artista invitado", "until": "hasta", "filterStyle": "Estilo", "filterLocation": "Estudio", "filterAll": "Todos", "none": "No hay artistas con esos filtros.", "empty": "Las fichas de artistas se publicarán en cuanto el estudio las valide.", "view": "Ver perfil", "book": "Pedir cita con", "works": "Trabajos", "back": "Todos los artistas" },
+  "locations": { "title": "Dos estudios en Ibiza", "call": "Llamar", "whatsapp": "WhatsApp", "map": "Cómo llegar", "hours": "Horario", "pendingData": "Dirección y horario pendientes de confirmar." },
+  "form": {
+    "title": "Pide tu cita",
+    "intro": "Cuéntanos tu idea. Te respondemos por WhatsApp o email.",
+    "name": "Nombre", "email": "Email", "phone": "Teléfono / WhatsApp", "contactHint": "Necesitamos al menos email o teléfono.",
+    "service": "Qué quieres", "location": "Estudio", "artist": "Artista", "anyArtist": "Sin preferencia",
+    "message": "Tu idea", "messageHint": "Estilo, tamaño, referencias…", "zone": "Zona del cuerpo", "size": "Tamaño aproximado", "dates": "Fechas en Ibiza",
+    "privacy": "He leído y acepto la", "privacyLink": "política de privacidad", "marketing": "Quiero recibir novedades y promociones (opcional).",
+    "layered": "Responsable: [PENDIENTE]. Finalidad: gestionar tu solicitud de cita. Derechos: acceso, rectificación, supresión y otros, según la política de privacidad.",
+    "submit": "Enviar solicitud", "sending": "Enviando…", "ok": "Recibido. Te contactamos pronto.", "error": "No se ha podido enviar. Revisa los campos marcados o escríbenos por WhatsApp.",
+    "required": "Obligatorio", "invalidEmail": "Revisa el email", "needContact": "Indica email o teléfono", "needPrivacy": "Debes aceptar la política de privacidad"
+  },
+  "faq": { "title": "Preguntas frecuentes", "empty": "Las preguntas frecuentes están pendientes de redactar con el estudio." },
+  "footer": { "legal": "Aviso legal", "privacy": "Privacidad", "cookies": "Cookies", "cookieSettings": "Configurar cookies", "lang": "English" },
+  "bar": { "call": "Llamar", "whatsapp": "WhatsApp", "book": "Reservar", "choose": "Elige estudio" },
+  "consent": { "text": "Usamos analítica sin fines publicitarios para mejorar la web, solo si la aceptas.", "accept": "Aceptar analítica", "reject": "Rechazar", "more": "Más información" },
+  "pending": "Pendiente de validar con el estudio",
+  "legalPending": "Texto legal pendiente de redacción y validación por el estudio y su asesoría."
+}

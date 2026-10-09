@@ -1,0 +1,84 @@
+---
+import { useT, type Lang } from '../i18n';
+import { visible, type Artist, type Location } from '../lib/db';
+import Pending from './Pending.astro';
+interface Props { lang: Lang; artists: Artist[]; styles: { slug: string; name: string }[]; locations: Location[]; filters?: boolean; headingLevel?: 1 | 2 }
+const { lang, artists, styles, locations, filters = true, headingLevel = 2 } = Astro.props;
+const t = useT(lang);
+const shown = artists.filter(visible);
+const styleName = new Map(styles.map((s) => [s.slug, s.name]));
+const locName = new Map(locations.map((l) => [l.slug, l.name.replace(/^Mamanoquiere\s*(Tattoo\s*)?/i, '')]));
+const usedStyles = styles.filter((s) => shown.some((a) => a.styles.includes(s.slug)));
+const dateFmt = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long' });
+const H = headingLevel === 1 ? 'h1' : 'h2';
+---
+<section class="section wrap" id="artistas" aria-labelledby="artists-title">
+  <div class="section-head">
+    <H id="artists-title">{t('artists.title')}</H>
+    <p class="muted">{t('artists.intro')}</p>
+  </div>
+
+  {shown.length === 0 ? <p class="empty">{t('artists.empty')}</p> : (
+    <>
+      {filters && (
+        <form class="filters" data-artist-filters aria-label={t('artists.title')} onsubmit="return false">
+          <div class="field">
+            <label for="f-style">{t('artists.filterStyle')}</label>
+            <select id="f-style" name="style">
+              <option value="">{t('artists.filterAll')}</option>
+              {usedStyles.map((s) => <option value={s.slug}>{s.name}</option>)}
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-loc">{t('artists.filterLocation')}</label>
+            <select id="f-loc" name="location">
+              <option value="">{t('artists.filterAll')}</option>
+              {locations.map((l) => <option value={l.slug}>{locName.get(l.slug)}</option>)}
+            </select>
+          </div>
+        </form>
+      )}
+      <ul class="artist-index" data-artist-list>
+        {shown.map((a) => (
+          <li data-styles={a.styles.join(' ')} data-locations={a.locations.join(' ')}>
+            <a href={`/${lang}/${t('routes.artists')}/${a.slug}`}>
+              <span class="name">{a.display_name}</span>
+              {a.status === 'guest' && <span class="tag">{t('artists.guest')}{a.guest_until ? ` · ${t('artists.until')} ${dateFmt.format(new Date(a.guest_until))}` : ''}</span>}
+              <span class="meta">
+                {[a.styles.map((s) => styleName.get(s) ?? s).join(', '), a.locations.map((l) => locName.get(l) ?? l).join(' / ')].filter(Boolean).join(' — ')}
+                {a.validation !== 'validado' && <> <Pending lang={lang} /></>}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+      <p class="muted" data-artist-none hidden role="status">{t('artists.none')}</p>
+    </>
+  )}
+</section>
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-artist-filters]');
+  const list = document.querySelector('[data-artist-list]');
+  const none = document.querySelector<HTMLElement>('[data-artist-none]');
+  if (form && list && none) {
+    const apply = () => {
+      const st = (form.elements.namedItem('style') as HTMLSelectElement).value;
+      const lo = (form.elements.namedItem('location') as HTMLSelectElement).value;
+      let n = 0;
+      list.querySelectorAll<HTMLElement>('li').forEach((li) => {
+        const ok = (!st || li.dataset.styles!.split(' ').includes(st)) && (!lo || li.dataset.locations!.split(' ').includes(lo));
+        li.hidden = !ok; if (ok) n++;
+      });
+      none.hidden = n > 0;
+      const p = new URLSearchParams(location.search);
+      st ? p.set('estilo', st) : p.delete('estilo');
+      lo ? p.set('estudio', lo) : p.delete('estudio');
+      history.replaceState(null, '', `${location.pathname}${p.size ? '?' + p : ''}${location.hash}`);
+    };
+    const q = new URLSearchParams(location.search);
+    (form.elements.namedItem('style') as HTMLSelectElement).value = q.get('estilo') ?? '';
+    (form.elements.namedItem('location') as HTMLSelectElement).value = q.get('estudio') ?? '';
+    form.addEventListener('change', apply);
+    apply();
+  }
+</script>

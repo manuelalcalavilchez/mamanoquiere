@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "title": "Mamanoquiere Tattoo Ibiza — Tattoo & piercing in Ibiza",
+    "description": "Tattoo and piercing studio in Ibiza with two locations: Puerto and Beach. See our artists' work and book your appointment."
+  },
+  "routes": { "artists": "artists", "legal": "legal", "notice": "legal-notice", "privacy": "privacy", "cookies": "cookies" },
+  "nav": { "portfolio": "Portfolio", "artists": "Artists", "services": "Services", "locations": "Studios", "contact": "Book", "skip": "Skip to content" },
+  "hero": { "lead": "Tattoo and piercing in Ibiza. Two studios, Puerto and Beach.", "cta": "Book an appointment", "secondary": "See the work" },
+  "services": { "title": "What we do", "from": "From", "ask": "Price depends on the design. We'll quote once we see your idea." },
+  "portfolio": { "title": "Recent work", "empty": "The portfolio is being uploaded by the studio.", "all": "All", "by": "by" },
+  "artists": { "title": "Artists", "intro": "Choose by style or studio, or let us recommend someone.", "guest": "Guest artist", "until": "until", "filterStyle": "Style", "filterLocation": "Studio", "filterAll": "All", "none": "No artists match those filters.", "empty": "Artist profiles will be published once the studio approves them.", "view": "View profile", "book": "Book with", "works": "Work", "back": "All artists" },
+  "locations": { "title": "Two studios in Ibiza", "call": "Call", "whatsapp": "WhatsApp", "map": "Directions", "hours": "Opening hours", "pendingData": "Address and hours to be confirmed." },
+  "form": {
+    "title": "Book your appointment",
+    "intro": "Tell us your idea. We'll reply by WhatsApp or email.",
+    "name": "Name", "email": "Email", "phone": "Phone / WhatsApp", "contactHint": "We need at least an email or a phone number.",
+    "service": "What you'd like", "location": "Studio", "artist": "Artist", "anyArtist": "No preference",
+    "message": "Your idea", "messageHint": "Style, size, references…", "zone": "Body placement", "size": "Approximate size", "dates": "Dates in Ibiza",
+    "privacy": "I have read and accept the", "privacyLink": "privacy policy", "marketing": "Send me news and offers (optional).",
+    "layered": "Controller: [PENDING]. Purpose: handling your booking request. Rights: access, rectification, erasure and others, as set out in the privacy policy.",
+    "submit": "Send request", "sending": "Sending…", "ok": "Received. We'll be in touch soon.", "error": "We couldn't send it. Check the highlighted fields or message us on WhatsApp.",
+    "required": "Required", "invalidEmail": "Check the email", "needContact": "Add an email or a phone number", "needPrivacy": "You need to accept the privacy policy"
+  },
+  "faq": { "title": "FAQ", "empty": "FAQs are pending with the studio." },
+  "footer": { "legal": "Legal notice", "privacy": "Privacy", "cookies": "Cookies", "cookieSettings": "Cookie settings", "lang": "Español" },
+  "bar": { "call": "Call", "whatsapp": "WhatsApp", "book": "Book", "choose": "Choose a studio" },
+  "consent": { "text": "We use non-advertising analytics to improve the site, only if you accept.", "accept": "Accept analytics", "reject": "Reject", "more": "More info" },
+  "pending": "Pending validation by the studio",
+  "legalPending": "Legal text pending drafting and approval by the studio and its advisors."
+}

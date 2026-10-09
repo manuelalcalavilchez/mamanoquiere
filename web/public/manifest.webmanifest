@@ -1,0 +1,2 @@
+{ "name": "Mamanoquiere Tattoo Ibiza", "short_name": "Mamanoquiere", "start_url": "/", "display": "standalone",
+  "background_color": "#1C1814", "theme_color": "#1C1814", "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }] }

@@ -1,81 +1,216 @@
-# Mamanoquiere Tattoo Ibiza — web + app de gestión
+# Mamanoquiere Tattoo Ibiza — Web + CRM (rama `astro-directus`)
 
-Un único despliegue con tres servicios:
+> Alternativa a la versión FastAPI + React de `main`: web pública en Astro SSR y CRM sobre Directus, misma base PostgreSQL. Se despliega en EasyPanel como servicio Compose independiente (servicios con prefijo `mmqd-`), así puede convivir con la de `main`.
 
-| Servicio | Qué es |
-| --- | --- |
-| `web` | Nginx con la web pública (`/`, `/en`) y la app de gestión (`/app`). Pasa `/api` y `/media` a la API |
-| `api` | FastAPI (Python 3.12). Documentación en `/api/docs` |
-| `db` | PostgreSQL 16 |
+Web pública bilingüe y CRM para un estudio con dos ubicaciones (Puerto y Beach).
 
-Los datos viven en dos volúmenes: `pgdata` (base de datos) y `media` (fotos, adjuntos, PDF de consentimientos).
+## Arquitectura
 
-## Desplegar con Docker Compose
-
-```bash
-cp .env.example .env      # rellena POSTGRES_PASSWORD, JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, PUBLIC_URL
-docker compose up -d --build
+```
+                 ┌──────────────── VPS (Easypanel / Docker) ────────────────┐
+ Visitante ──▶   │  web (Astro SSR, Node)  ──SELECT web.* / create_lead()──┐ │
+                 │        │                                                  ▼ │
+                 │        └─ imágenes ◀── directus (CRM, /assets) ──▶  PostgreSQL 16
+ Estudio  ──▶    │                         ▲                               ▲ │
+                 │                         └── n8n (avisos, cierres, cumpleaños)┘ │
+                 └──────────────────────────────────────────────────────────┘
 ```
 
-La web queda en `http://servidor:8080` (cambia `WEB_PORT` si hace falta). Pon delante el proxy con HTTPS que uses.
-Genera el secreto con `openssl rand -hex 32`.
+| Pieza | Elección | Por qué |
+|---|---|---|
+| Base de datos | PostgreSQL 16 | La lógica de negocio vive aquí: embudo de leads, reparto de comisiones, cierres de caja (tablas `cierre_*` recalculadas automáticamente) y vistas públicas. Cualquier cliente (Directus, web, n8n, futura app) obtiene el mismo resultado. |
+| CRM | Directus 11 | Backoffice completo sin programarlo: roles, formularios, ficheros con transformación de imágenes, y una app web instalable en móvil o tablet. Licencia gratuita para negocios de menos de 5 M$ de facturación. |
+| Web | Astro 5 SSR (adaptador Node) | Envía HTML casi sin JavaScript, lo que da buena velocidad en móvil. Lee la BD con un rol restringido. Los cambios del CRM aparecen en menos de 60 s, sin rebuild. |
+| Automatización | n8n y Evolution API (ya existentes) | Avisos de lead nuevo por WhatsApp, envío del cierre diario y felicitaciones. |
+| Analítica | Umami self-hosted | Sin cookies publicitarias. Solo se carga si el usuario la acepta. |
 
-## Desplegar en EasyPanel
+Coste de infraestructura: el VPS actual, o uno de 4 GB de RAM a unos 5–10 €/mes. Más el dominio.
 
-1. Sube esta carpeta a un repositorio (Gitea o GitHub).
-2. En EasyPanel: nuevo servicio **Compose**, origen Git, ruta `docker-compose.yml`.
-3. En **Environment**, pega el contenido de tu `.env`.
-4. Quita la línea `ports` del servicio `web` (EasyPanel enruta con Traefik y así no hay conflicto de puertos) y en **Domains** asigna el dominio al servicio `web`, puerto 80, con HTTPS.
-5. Despliega. Al arrancar, la API crea las tablas, los dos estudios, las reglas de comisión por defecto y el administrador.
+## Estructura
 
-## Primeros pasos después de desplegar
-
-1. Entra en `/app` con `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Después puedes vaciar esas dos variables.
-2. **Equipo y estudios**: revisa dirección, teléfono, WhatsApp y horario de Puerto y Beach (hay datos pendientes de validar) y da de alta al equipo.
-3. **Comisiones**: ajusta los porcentajes (por defecto: tatuaje 70 %, invitado 60 %, piercing 50 %, producto 10 %).
-4. **Personalización**: color de acento, imagen o vídeo de portada, preguntas frecuentes, textos legales revisados por la asesoría, valoración (solo si está verificada) y preguntas del consentimiento.
-5. Para enviar mensajes, rellena SMTP y/o Evolution API en el `.env` y vuelve a desplegar.
-
-## Copias de seguridad
-
-```bash
-docker compose exec db pg_dump -U mamanoquiere mamanoquiere | gzip > backup_$(date +%F).sql.gz
-docker run --rm -v mamanoquiere_media:/m -v $PWD:/b alpine tar czf /b/media_$(date +%F).tgz -C /m .
+```
+db/                 imagen Postgres con el esquema (se aplica en el primer arranque)
+  001_schema.sql    tablas (negocio, artistas, CRM, comisiones, consentimientos)
+  002_logic.sql     triggers, cierres diarios, esquema `web` público, rol web_app
+  003_seed.sql      nombre, 2 estudios, servicios base, reglas de reparto del audio
+  004_web_role.sh   contraseña del rol web_app
+  005_prefill_publico.sql  datos públicos de los estudios (pendientes de validar)
+directus/           bootstrap.mjs: configura Directus por API (idempotente)
+tools/              import_portfolio.py: fotos de Instagram o carpeta → galería demo
+web/                Astro (landing, artistas, perfiles, legales, /api/lead, sitemap)
+docker-compose.yml  db + directus + directus-setup + web + backup diario
+.env.example
 ```
 
-El nombre real del volumen aparece en `docker volume ls`. Programa ambas copias a diario.
+## Despliegue en Easypanel (demo en ~15 min)
 
-## Actualizar
+1. **Repositorio.** Ya está en GitHub, rama `astro-directus`.
+2. **Servicio.** En EasyPanel, **+ Servicio → Compose**, origen Git `https://github.com/manuelalcalavilchez/mamanoquiere.git`, **rama `astro-directus`**, archivo `docker-compose.yml`.
+3. **Entorno.** En *Environment* pega `.env.example` y rellena los secretos (`openssl rand -hex 24`). Para enseñarlo deja `SHOW_PENDING=true`.
+4. **Dominios.** En *Domains* añade:
+   - `WEB_DOMAIN` → servicio `mmqd-web`, puerto `4321`
+   - `CRM_DOMAIN` → servicio `mmqd-directus`, puerto `8055`
+
+   Los dos están conectados a la red externa `easypanel` para que Traefik llegue a ellos. Fuera de EasyPanel, quita esa red y publica puertos.
+
+   Si usas Cloudflare Tunnel en vez de Traefik, apunta los dos hostnames a esos servicios.
+5. **Deploy.** El orden de arranque es automático:
+   - `mmqd-db` crea el esquema y precarga los datos públicos (solo con el volumen vacío).
+   - `mmqd-directus` arranca.
+   - `mmqd-setup` configura colecciones, menús, roles, carpetas y el panel "Hoy en el estudio", y termina.
+   - `mmqd-web` sirve la web.
+6. **Comprobación:**
+   - `https://WEB_DOMAIN/es/` muestra la barra "Versión de demostración".
+   - `https://CRM_DOMAIN` permite entrar con `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
+
+**Notas**
+- **Esquema.** Solo se aplica con el volumen `pgdata` vacío. Para rehacer la demo desde cero, borra el volumen y vuelve a desplegar.
+- **Bootstrap.** `mmqd-setup` es idempotente y se ejecuta en cada deploy sin duplicar nada.
+- **Indexación.** En modo demo la web envía `noindex` (cabecera y meta).
+
+## Preparar la demo con fotos reales
+
+Desde tu máquina, con el CRM ya desplegado:
 
 ```bash
-git pull && docker compose up -d --build
+pip install requests pillow instaloader
+export DIRECTUS_URL=https://CRM_DOMAIN ADMIN_EMAIL=... ADMIN_PASSWORD=...
+
+# Opción A: desde el Instagram del estudio (pide login la primera vez y guarda la sesión)
+python tools/import_portfolio.py instagram mamanoquiere_tattoo.ibiza --login <tu_usuario> --limit 40
+
+# Opción B: fotos en carpeta (las que te pase el estudio; pie de foto opcional en un .txt con el mismo nombre)
+python tools/import_portfolio.py folder ./fotos --limit 40
 ```
 
-Las tablas nuevas se crean solas. Si en el futuro cambian columnas de tablas existentes, habrá que añadir migraciones con Alembic.
+**Cómo trata las fotos el importador**
+- **Proceso.** Las normaliza (orientación, máx. 2000 px), las sube a la carpeta `web-publica` y crea la entrada en *Galería / portfolio*.
+- **Portada.** Las 12 primeras salen en la portada (`--featured`).
+- **Artistas.** Si un pie de foto menciona `@usuario` y ese usuario está en el campo `instagram` de un artista, la foto se enlaza a ese artista.
+- **Modo demo.** Quedan marcadas `demo` y solo se ven con `SHOW_PENDING=true`. En producción no aparece ninguna foto hasta que alguien la marca como pública con autorización del cliente y texto alternativo (lo impone la base de datos).
+- **Repeticiones.** Volver a ejecutarlo no duplica fotos.
+
+**Limitaciones**
+- Instagram bloquea las peticiones anónimas, sobre todo desde IPs de servidor. Ejecútalo desde tu equipo con sesión iniciada; no lo lances desde el VPS.
+- Perfil del estudio: [@mamanoquiere_tattoo.ibiza](https://www.instagram.com/mamanoquiere_tattoo.ibiza/). Confirma con el estudio el permiso para usar las fotos en la web.
+
+## Datos precargados (`db/005_prefill_publico.sql`)
+
+- **Origen.** Instagram `@mamanoquiere_tattoo.ibiza` (perfil del estudio). Dirección, teléfono, horario y enlace de mapa de Puerto y Beach vienen de directorios públicos (Fresha).
+- **Estado.** Todo queda `pendiente`. El campo `source_note` de cada estudio indica las discrepancias encontradas: teléfono y horario de Beach.
+- **Visibilidad.** En producción esos datos no salen hasta marcarlos `validado`. Mientras tanto la web muestra solo los nombres de los dos estudios.
+- **Pendiente.** No hay artistas, precios, FAQ ni textos legales: están vacíos a la espera del estudio.
+
+## Qué configura el bootstrap de Directus
+
+**Menú en español en cuatro grupos**
+
+| Grupo | Colecciones |
+|---|---|
+| CRM | Solicitudes, Clientes, Citas, Fotos de trabajos, Consentimientos, Mensajes |
+| Caja | Ventas, Cierre por estudio, Cierre por artista, Reglas de reparto |
+| Contenido web | Artistas, Galería, Servicios, Estilos, Estudios, FAQ, Reseñas, Negocio |
+| Sistema | Tablas auxiliares (plegado) |
+
+**Campos y relaciones**
+- Desplegables con colores para los estados de leads y citas.
+- Relaciones navegables con la ficha relacionada: artista ↔ estilos/estudios/servicios/galería, cliente ↔ citas, cita ↔ fotos, lead ↔ etiquetas/historial.
+- Traducciones ES/EN en artistas, servicios, estilos y FAQ.
+- Campos calculados en solo lectura: reparto, cierres e historial.
+- Datos sensibles ocultos: hash de IP y respuestas del consentimiento.
+
+**Permisos**
+- Acceso público solo a las imágenes de la carpeta `web-publica`.
+
+| Rol | Permisos |
+|---|---|
+| Dirección | Admin. |
+| Recepción | Leads, clientes, citas, ventas y fotos. Lectura de catálogo y cierres. Consentimientos sin ver las respuestas de salud. |
+| Artista | Solo sus citas (puede cerrarlas con precio y pago), sus clientes, sus ventas, su cierre y su galería. Requiere vincular el usuario en *Artistas → directus_user*. |
+
+**Panel "Hoy en el estudio"**
+- Leads nuevos, citas confirmadas y cobrado en las últimas 24 h.
+- Últimas solicitudes y próximas citas.
+
+La app de Directus se puede instalar en móvil o tablet desde el navegador ("Añadir a pantalla de inicio").
+
+## Flujo de datos públicos
+
+- **Visibilidad.** La web solo muestra lo que tiene `validation = 'validado'`. Con `SHOW_PENDING=true` (staging) lo pendiente se ve marcado "Pendiente de validar".
+- **Fotos de la galería.** Solo se publican si tienen `client_publication_ok` (autorización del cliente) y `alt_es`. Lo impone un CHECK en la base de datos.
+- **Reseñas.** Solo se muestran con fuente y fecha (`fetched_at`). Nunca se escriben a mano sin origen.
+
+## Formulario → CRM
+
+`POST /api/lead` hace lo siguiente:
+
+1. **Valida** con zod en el servidor (también lo hace el navegador) y exige email o teléfono.
+2. **Filtra spam** con honeypot, time-trap de 3 s y rate limit de 5 envíos cada 10 min por IP (hash).
+3. **Guarda** con `web.create_lead()`, que registra la fecha y la versión de la política aceptada (`PRIVACY_VERSION`), el consentimiento de marketing opcional y desmarcado, y las etiquetas `tattoo|piercing`, `puerto|beach` y `web`.
+4. **Avisa a n8n** si existe `N8N_LEAD_WEBHOOK`, mandando solo id, nombre, servicio, ubicación y artista.
+
+El formulario funciona sin JavaScript (POST con redirección `?enviado=1`).
+
+## Flujos n8n sugeridos
+
+| Flujo | Disparador | Acción |
+|---|---|---|
+| Lead nuevo | Webhook `mmq-lead` | WhatsApp a recepción de la ubicación con enlace al lead en Directus |
+| Cierre diario | Cron a la hora de cierre | Consulta `cierre_ubicacion` y `cierre_artista` del día y envía el resumen al dueño |
+| Felicitaciones | Cron diario | Clientes con `birth_date` hoy **y** `marketing_consent = true`. WhatsApp o email, registrado en `message_log` |
+| Recordatorio de cita | Cron cada hora | Citas `confirmada` de mañana, mensaje al cliente |
+
+## Reparto y cierres de caja
+
+Las reglas están en `commission_rules`. Una regla general tiene `artist_id NULL`; una excepción por artista lleva su `artist_id`. Ambas tienen vigencia por fechas.
+
+| Concepto | % para el artista |
+|---|---|
+| Servicio a cliente propio del artista (`client_origin = 'artista'`) | 70 % |
+| Servicio a cliente del estudio | 50 % |
+| Venta (piercing, joyería, productos) | 10 % para quien vende |
+
+El reparto se calcula y **congela** al pasar la cita a `realizada`. Si cambian las reglas, los cierres anteriores no varían.
+
+## Pendiente de validar con el estudio
+
+**Datos del negocio y contenido público**
+- Razón social, CIF, domicilio y email legal (aviso legal y responsable del tratamiento).
+- Dirección, coordenadas, teléfono, WhatsApp, horario y temporada de Puerto y de Beach.
+- Fichas de los 9 artistas fijos y guests: nombre público, estilos, ubicación, bio ES/EN, Instagram, retrato y galería con autorización de cada cliente.
+- Servicios: descripciones, precio "desde" (o no publicarlo) y duración.
+- FAQ: cuidados, señal o depósito, cancelaciones, edad mínima, cover-ups…
+- Dominio definitivo y cuenta de Google Business Profile de cada ubicación (clave para SEO local).
+
+**Textos legales (asesoría)**
+- Política de privacidad, aviso legal y política de cookies.
+- Consentimiento informado y cuestionario de salud: normativa sanitaria de Illes Balears, plazo de conservación y tratamiento de menores.
+
+**Reglas de negocio (del audio)**
+- Confirmar por escrito el 70/50/10.
+- ¿El piercing hecho en cita cuenta como servicio (70/50) o como venta (10 %)?
+- ¿El 10 % se calcula sobre el precio con o sin IVA?
+- ¿Cómo se trata la señal o depósito en el cierre?
+
+## Seguridad y RGPD
+
+- La web usa el rol `web_app`: solo lee el esquema `web` y ejecuta `web.create_lead`. No tiene acceso a clientes, citas ni ventas.
+- La IP nunca se guarda en claro; se guarda un hash con sal diaria.
+- El consentimiento informado tiene datos de salud (art. 9 RGPD):
+  - Las respuestas van en `answers_enc`, cifradas con `pgp_sym_encrypt` y una clave guardada fuera de la base de datos.
+  - Las firmas van en una carpeta privada.
+  - Solo el rol Dirección tiene acceso.
+  - Requiere registro de actividades de tratamiento y evaluación de riesgos.
+- Las fuentes están alojadas en el propio servidor (sin Google Fonts remoto). Umami solo se carga tras aceptar el banner, que da el mismo peso a aceptar y rechazar.
 
 ## Desarrollo local
 
 ```bash
-# API (SQLite)
-cd api && pip install -r requirements.txt -r requirements-dev.txt
-ADMIN_EMAIL=admin@local ADMIN_PASSWORD=admin12345 uvicorn app.main:app --reload
-pytest -q
-
-# Web (en otra terminal): http://localhost:5173
-cd web && npm install && npm run dev
+cd web && npm install
+DATABASE_URL=postgres://web_app:...@localhost:5432/mamanoquiere \
+PUBLIC_ASSETS_URL=http://localhost:8055 SHOW_PENDING=true npm run dev
 ```
 
-## Roles
-
-| Rol | Ve |
-| --- | --- |
-| Administración | Todo, incluida Personalización, Equipo y reglas de comisión |
-| Encargado | Todo salvo Personalización y Equipo |
-| Tatuador, piercer, invitado | Su agenda, sus trabajos, su línea de caja, clientes, consentimiento, su portfolio y las solicitudes que tenga asignadas |
-
-## Limitaciones conocidas
-
-- La web es una SPA: Google la indexa, pero otros buscadores o previsualizaciones de redes pueden no ver títulos por página. Si se necesita, se puede añadir prerenderizado.
-- El límite antispam y los envíos de mensajes viven en memoria: la API debe correr con una sola réplica.
-- Los PDF de consentimiento (datos de salud) se guardan en el volumen `media` sin cifrar; protege el servidor y las copias.
-- Los textos legales y las respuestas de preguntas frecuentes los debe aportar el estudio; la web no los inventa.
+Para añadir un idioma:
+1. Crea `web/src/i18n/<código>.json` y regístralo en `i18n/index.ts`.
+2. Añade una fila en `languages` y sus traducciones en Directus.

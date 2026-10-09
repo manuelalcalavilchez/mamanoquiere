@@ -1,0 +1,11 @@
+---
+import { useT, type Lang } from '../i18n';
+interface Props { lang: Lang; faqs: { id: string; question: string; answer: string }[] }
+const { lang, faqs } = Astro.props;
+const t = useT(lang);
+---
+<section class="section wrap faq" id="faq" aria-labelledby="faq-title">
+  <div class="section-head"><h2 id="faq-title">{t('faq.title')}</h2></div>
+  {faqs.length === 0 ? <p class="empty">{t('faq.empty')}</p> :
+    faqs.map((f) => <details><summary>{f.question}</summary><div class="answer"><p>{f.answer}</p></div></details>)}
+</section>

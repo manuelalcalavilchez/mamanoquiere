@@ -1,63 +1,114 @@
-# Mamanoquiere: base de datos + API + web/app
-# En EasyPanel: crear un servicio "Compose" con este archivo y asignar el dominio al servicio "web" (puerto 80).
+# Mamanoquiere — rama astro-directus: web pública (Astro SSR) + CRM (Directus) + PostgreSQL
+#
+# EasyPanel: servicio "Compose" con origen Git (esta rama) y archivo docker-compose.yml.
+#   Dominios: WEB_DOMAIN -> servicio mmqd-web, puerto 4321
+#             CRM_DOMAIN -> servicio mmqd-directus, puerto 8055
+# Nombres de servicio con prefijo mmqd- para no chocar en DNS con la versión
+# FastAPI (mmq-db, mmq-api, web) ni con otros servicios del mismo EasyPanel.
 services:
-  mmq-db:
-    image: postgres:16-alpine
+  mmqd-db:
+    build: ./db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-mamanoquiere}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
-      POSTGRES_DB: ${POSTGRES_DB:-mamanoquiere}
+      POSTGRES_DB: mamanoquiere
+      POSTGRES_USER: mmq
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD}
+      WEB_DB_PASSWORD: ${WEB_DB_PASSWORD:?Define WEB_DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mamanoquiere}"]
+      test: ["CMD-SHELL", "pg_isready -U mmq -d mamanoquiere"]
       interval: 10s
-      retries: 5
+      retries: 10
 
-  mmq-api:
-    build: ./api
+  mmqd-directus:                  # CRM / backoffice  ->  CRM_DOMAIN
+    image: directus/directus:11
     restart: unless-stopped
     depends_on:
-      mmq-db:
-        condition: service_healthy
+      mmqd-db: { condition: service_healthy }
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mamanoquiere}:${POSTGRES_PASSWORD}@mmq-db:5432/${POSTGRES_DB:-mamanoquiere}
-      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env}
-      ROOT_PATH: /api
-      MEDIA_DIR: /data/media
-      CORS_ORIGINS: ${PUBLIC_URL:-http://localhost:8080}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-}
-      EVOLUTION_URL: ${EVOLUTION_URL:-}
-      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-}
-      EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:-}
+      SECRET: ${DIRECTUS_SECRET:?Define DIRECTUS_SECRET}
+      PUBLIC_URL: https://${CRM_DOMAIN}
+      DB_CLIENT: pg
+      DB_HOST: mmqd-db
+      DB_PORT: 5432
+      DB_DATABASE: mamanoquiere
+      DB_USER: mmq
+      DB_PASSWORD: ${DB_PASSWORD}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Define ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD}
+      TELEMETRY: "false"
+      ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION: 2000
+      ASSETS_CACHE_TTL: 30d
+      FILES_MAX_UPLOAD_SIZE: 25mb
+      EMAIL_TRANSPORT: ${EMAIL_TRANSPORT:-sendmail}
+      EMAIL_SMTP_HOST: ${SMTP_HOST:-}
+      EMAIL_SMTP_USER: ${SMTP_USER:-}
+      EMAIL_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     volumes:
-      - media:/data/media
-
-  web:
-    build: ./web
-    restart: unless-stopped
-    depends_on: [mmq-api]
-    expose:
-      - "80"
-    # Conectado también a la red de EasyPanel para que Traefik llegue al contenedor
+      - uploads:/directus/uploads
+      - extensions:/directus/extensions
+    expose: ["8055"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8055/server/health || exit 1"]
+      interval: 15s
+      retries: 20
     networks:
       default:
       easypanel:
-        aliases: [postgis_mamanoquiere_web]
-    # Fuera de EasyPanel, para publicar un puerto en el host:
-    # ports:
-    #   - "${WEB_PORT:-8080}:80"
+
+  mmqd-setup:                     # configura colecciones, roles y panel (idempotente, termina)
+    build: ./directus
+    restart: on-failure
+    depends_on:
+      mmqd-directus: { condition: service_healthy }
+    environment:
+      DIRECTUS_URL: http://mmqd-directus:8055
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+
+  mmqd-web:                       # web pública  ->  WEB_DOMAIN
+    build: ./web
+    restart: unless-stopped
+    depends_on:
+      mmqd-db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgres://web_app:${WEB_DB_PASSWORD}@mmqd-db:5432/mamanoquiere
+      SITE_URL: https://${WEB_DOMAIN}
+      PUBLIC_ASSETS_URL: https://${CRM_DOMAIN}
+      PUBLIC_UMAMI_URL: ${UMAMI_URL:-}
+      PUBLIC_UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID:-}
+      SHOW_PENDING: ${SHOW_PENDING:-false}
+      PRIVACY_VERSION: ${PRIVACY_VERSION:-PENDIENTE-v0}
+      IP_HASH_SALT: ${IP_HASH_SALT:?Define IP_HASH_SALT}
+      N8N_LEAD_WEBHOOK: ${N8N_LEAD_WEBHOOK:-}
+    expose: ["4321"]
+    networks:
+      default:
+      easypanel:
+    # Fuera de EasyPanel (sin Traefik), publica el puerto y quita la red easypanel:
+    # ports: ["4321:4321"]
+
+  mmqd-backup:                    # pg_dump diario: 14 días + 8 semanas
+    image: prodrigestivill/postgres-backup-local:16
+    restart: unless-stopped
+    depends_on: [mmqd-db]
+    environment:
+      POSTGRES_HOST: mmqd-db
+      POSTGRES_DB: mamanoquiere
+      POSTGRES_USER: mmq
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 14
+      BACKUP_KEEP_WEEKS: 8
+    volumes:
+      - backups:/backups
 
 volumes:
   pgdata:
-  media:
+  uploads:
+  extensions:
+  backups:
 
 networks:
   easypanel:

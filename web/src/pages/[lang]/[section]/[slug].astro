@@ -1,0 +1,70 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Work from '../../../components/Work.astro';
+import Pending from '../../../components/Pending.astro';
+import ContactForm from '../../../components/ContactForm.astro';
+import { isLang, useT } from '../../../i18n';
+import { getArtists, getLocations, getStyles, getWorks, visible } from '../../../lib/db';
+import { img, srcset } from '../../../lib/media';
+
+const { lang, section, slug } = Astro.params;
+if (!isLang(lang)) return new Response(null, { status: 404 });
+const t = useT(lang);
+
+// --- Páginas legales: texto PENDIENTE, nunca inventado ------------------
+const legalPages: Record<string, string> = {
+  [t('routes.notice')]: t('footer.legal'), [t('routes.privacy')]: t('footer.privacy'), [t('routes.cookies')]: t('footer.cookies'),
+};
+const isLegal = section === t('routes.legal') && slug! in legalPages;
+
+// --- Perfil de artista --------------------------------------------------
+let artist, works = [], styles = [], locations = [];
+if (!isLegal) {
+  if (section !== t('routes.artists')) return new Response(null, { status: 404 });
+  const all = await getArtists(lang);
+  artist = all.find((a) => a.slug === slug && visible(a));
+  if (!artist) return new Response(null, { status: 404 });
+  [works, styles, locations] = await Promise.all([getWorks(lang, { artistId: artist.id }), getStyles(lang), getLocations()]);
+}
+const styleName = new Map(styles.map((s) => [s.slug, s.name]));
+const locName = new Map(locations.map((l) => [l.slug, l.name]));
+const personLd = artist ? [{
+  '@context': 'https://schema.org', '@type': 'Person', name: artist.display_name, jobTitle: 'Tattoo artist',
+  worksFor: { '@type': 'Organization', name: 'Mamanoquiere Tattoo Ibiza' },
+  ...(artist.instagram && { sameAs: [`https://instagram.com/${artist.instagram.replace(/^@/, '')}`] }),
+}] : [];
+Astro.response.headers.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=600');
+---
+{isLegal ? (
+  <Base lang={lang} title={legalPages[slug!]} noindex>
+    <section class="section wrap legal-body">
+      <h1>{legalPages[slug!]}</h1>
+      <p class="empty">{t('legalPending')}</p>
+    </section>
+  </Base>
+) : (
+  <Base lang={lang} title={artist!.display_name} description={artist!.headline ?? `${artist!.display_name} — Mamanoquiere Tattoo Ibiza`}
+        image={artist!.portrait ? img(artist!.portrait, 1200) : undefined} jsonLd={personLd}>
+    <section class="section wrap">
+      <p><a href={`/${lang}/${t('routes.artists')}`}>{t('artists.back')}</a></p>
+      <div class="profile">
+        {artist!.portrait
+          ? <img class="portrait" src={img(artist!.portrait, 800)} srcset={srcset(artist!.portrait)} sizes="(min-width: 900px) 40vw, 100vw" alt="" width="800" height="1000" fetchpriority="high" />
+          : <div class="portrait" role="presentation"></div>}
+        <div>
+          <h1>{artist!.display_name}</h1>
+          {artist!.status === 'guest' && <p class="muted">{t('artists.guest')}</p>}
+          <p class="muted">{[artist!.styles.map((s) => styleName.get(s) ?? s).join(', '), artist!.locations.map((l) => locName.get(l) ?? l).join(' / ')].filter(Boolean).join(' — ')}</p>
+          {artist!.bio ? <p>{artist!.bio}</p> : <Pending lang={lang} />}
+          {artist!.instagram && <p><a href={`https://instagram.com/${artist!.instagram.replace(/^@/, '')}`} rel="noopener">Instagram</a></p>}
+          <p><a class="btn" href="#cita">{t('artists.book')} {artist!.display_name}</a></p>
+        </div>
+      </div>
+    </section>
+    <section class="section wrap" aria-labelledby="works-title">
+      <div class="section-head"><h2 id="works-title">{t('artists.works')}</h2></div>
+      {works.length ? <div class="masonry">{works.map((w) => <Work work={w} />)}</div> : <p class="empty">{t('portfolio.empty')}</p>}
+    </section>
+    <ContactForm lang={lang} artists={[artist!]} locations={locations} preselectArtist={artist!.slug} />
+  </Base>
+)}

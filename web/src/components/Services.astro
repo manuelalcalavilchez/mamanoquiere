@@ -1,0 +1,25 @@
+---
+import { useT, type Lang } from '../i18n';
+import { visible, type Service } from '../lib/db';
+import Pending from './Pending.astro';
+interface Props { lang: Lang; services: Service[] }
+const { lang, services } = Astro.props;
+const t = useT(lang);
+const fmt = new Intl.NumberFormat(lang === 'es' ? 'es-ES' : 'en-GB', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+---
+<section class="section wrap" id="servicios" aria-labelledby="services-title">
+  <div class="section-head"><h2 id="services-title">{t('services.title')}</h2></div>
+  <div class="services">
+    {services.map((s) => (
+      <article class="service">
+        <h3>{s.name}</h3>
+        {visible(s) && s.description ? <p>{s.description}</p> : <Pending lang={lang} />}
+        <p class="price">
+          {visible(s) && s.price_from
+            ? `${t('services.from')} ${fmt.format(Number(s.price_from))}${s.price_note ? ` · ${s.price_note}` : ''}`
+            : t('services.ask')}
+        </p>
+      </article>
+    ))}
+  </div>
+</section>

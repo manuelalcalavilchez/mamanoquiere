@@ -1,0 +1,37 @@
+---
+import { useT, type Lang } from '../i18n';
+interface Props { lang: Lang; umamiUrl?: string; umamiId?: string }
+const { lang, umamiUrl, umamiId } = Astro.props;
+const t = useT(lang);
+---
+<div class="consent" id="consent" hidden role="region" aria-label="Cookies">
+  <p>{t('consent.text')} <a href={`/${lang}/legal/${t('routes.cookies')}`}>{t('consent.more')}</a></p>
+  <div class="actions">
+    <!-- Mismo peso visual para aceptar y rechazar (criterio AEPD) -->
+    <button class="btn ghost" type="button" data-consent="denied">{t('consent.reject')}</button>
+    <button class="btn ghost" type="button" data-consent="granted">{t('consent.accept')}</button>
+  </div>
+</div>
+<script define:vars={{ umamiUrl, umamiId }}>
+  const KEY = 'mmq-consent-v1';
+  const box = document.getElementById('consent');
+  const load = () => {
+    if (!umamiUrl || !umamiId || document.getElementById('umami')) return;
+    const s = document.createElement('script');
+    s.id = 'umami'; s.defer = true; s.src = umamiUrl.replace(/\/$/, '') + '/script.js';
+    s.dataset.websiteId = umamiId; s.dataset.doNotTrack = 'true';
+    document.head.appendChild(s);
+  };
+  let state = null;
+  try { state = localStorage.getItem(KEY); } catch {}
+  if (state === 'granted') load();
+  else if (!state) box.hidden = false;
+  box.addEventListener('click', (e) => {
+    const v = e.target.closest('[data-consent]')?.dataset.consent;
+    if (!v) return;
+    try { localStorage.setItem(KEY, v); } catch {}
+    box.hidden = true;
+    if (v === 'granted') load();
+  });
+  window.openConsent = () => { box.hidden = false; box.querySelector('button')?.focus(); };
+</script>
