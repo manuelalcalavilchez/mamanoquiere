@@ -149,6 +149,111 @@ async function findOne(path, filter) {
   return (await api('GET', `${path}?${q}`))?.[0];
 }
 
+
+// ---------------------------------------------------------------------
+// Presentación en español: etiquetas, tamaño de campos y columnas de listados
+// ---------------------------------------------------------------------
+const LABELS = {
+  full_name: 'Nombre', email: 'Email', phone: 'Teléfono', status: 'Estado', service_category: 'Servicio',
+  location_id: 'Estudio', artist_id: 'Artista', message: 'Mensaje', body_zone: 'Zona del cuerpo',
+  approx_size: 'Tamaño aproximado', preferred_dates: 'Fechas preferidas', language: 'Idioma', source: 'Origen',
+  utm: 'Campaña (UTM)', privacy_accepted_at: 'Privacidad aceptada el', privacy_version: 'Versión de la política',
+  marketing_consent: 'Acepta comunicaciones', marketing_consent_at: 'Acepta comunicaciones desde', client_id: 'Cliente',
+  assigned_to: 'Asignado a', created_at: 'Creado', updated_at: 'Actualizado', birth_date: 'Fecha de nacimiento',
+  preferred_language: 'Idioma preferido', notes: 'Notas', lead_id: 'Solicitud', service_id: 'Servicio',
+  starts_at: 'Inicio', ends_at: 'Fin', client_origin: 'Origen del cliente', price_quoted: 'Precio presupuestado (€)',
+  deposit_amount: 'Señal (€)', price_final: 'Precio cobrado (€)', payment_method: 'Forma de pago',
+  artist_pct: '% artista', artist_amount: 'Para el artista (€)', studio_amount: 'Para el estudio (€)',
+  completed_at: 'Realizada el', work_description: 'Trabajo realizado', concept: 'Concepto', amount: 'Importe (€)',
+  sold_at: 'Fecha', slug: 'Identificador en la URL', display_name: 'Nombre público', legal_name: 'Nombre legal (interno)',
+  guest_from: 'Guest desde', guest_until: 'Guest hasta', instagram: 'Instagram', portrait: 'Retrato',
+  phone_internal: 'Teléfono (interno)', email_internal: 'Email (interno)', directus_user: 'Usuario del CRM',
+  is_public: 'Publicado en la web', sort: 'Orden', validation: 'Validación', file: 'Imagen', width: 'Ancho (px)',
+  height: 'Alto (px)', style_id: 'Estilo', alt_es: 'Descripción de la imagen (ES)', alt_en: 'Descripción de la imagen (EN)',
+  is_featured: 'Sale en la portada', client_publication_ok: 'El cliente autoriza publicarla', demo: 'Foto de demostración',
+  source_url: 'Procedencia', caption: 'Pie de foto', name: 'Nombre', street: 'Dirección', postal_code: 'Código postal',
+  locality: 'Localidad', region: 'Región', country: 'País', lat: 'Latitud', lng: 'Longitud', whatsapp: 'WhatsApp',
+  maps_url: 'Enlace al mapa', opening_hours: 'Horario', seasonal_note: 'Nota de temporada',
+  source_note: 'De dónde sale el dato', category: 'Categoría', price_from: 'Precio desde (€)', duration_min: 'Duración (min)',
+  applies_to: 'Se aplica a', valid_from: 'Vigente desde', valid_to: 'Vigente hasta', dia: 'Día', servicios: 'Servicios',
+  ventas: 'Ventas', total_cobrado: 'Total cobrado (€)', total_artista: 'Para el artista (€)', total_artistas: 'Para artistas (€)',
+  total_estudio: 'Para el estudio (€)', efectivo: 'Efectivo (€)', efectivo_en_caja: 'Efectivo en caja (€)',
+  tarjeta: 'Tarjeta (€)', otros: 'Otros (€)', rating: 'Valoración', review_count: 'Nº de reseñas',
+  fetched_at: 'Fecha del dato', website: 'Web', tax_id: 'CIF/NIF', taken_at: 'Fecha', publish_ok: 'Se puede publicar',
+  signed_at: 'Firmado el', signature_file: 'Firma', form_id: 'Formulario', appointment_id: 'Cita',
+  retention_until: 'Conservar hasta', channel: 'Canal', kind: 'Tipo', payload: 'Contenido', sent_at: 'Enviado el',
+  translations: 'Textos (ES / EN)', styles: 'Estilos', services: 'Servicios', locations: 'Estudios', gallery: 'Galería',
+  appointments: 'Citas', leads: 'Solicitudes', photos: 'Fotos', history: 'Historial de estados', tags: 'Etiquetas',
+  headline: 'Titular', bio: 'Biografía', description: 'Descripción', price_note: 'Nota de precio', question: 'Pregunta',
+  answer: 'Respuesta', from_status: 'Estado anterior', to_status: 'Estado nuevo', changed_at: 'Cambiado el',
+  business_id: 'Negocio', version: 'Versión', body: 'Texto', questions: 'Preguntas', answers_enc: 'Respuestas (cifradas)',
+  languages_code: 'Idioma', code: 'Código', direction: 'Dirección del texto', is_active: 'Activo',
+};
+const LONG_TEXT = new Set(['message', 'notes', 'work_description', 'bio', 'description', 'caption', 'answer', 'seasonal_note', 'source_note', 'body']);
+const JSON_FIELDS = new Set(['opening_hours', 'utm', 'payload', 'questions']);
+// Columnas por defecto de cada listado: [campos, orden]
+const LIST_COLUMNS = {
+  leads: [['full_name', 'status', 'service_category', 'location_id.name', 'artist_id.display_name', 'created_at'], ['-created_at']],
+  clients: [['full_name', 'phone', 'email', 'marketing_consent', 'created_at'], ['full_name']],
+  appointments: [['starts_at', 'client_id.full_name', 'artist_id.display_name', 'location_id.name', 'status', 'price_final'], ['-starts_at']],
+  sales: [['sold_at', 'concept', 'amount', 'payment_method', 'artist_id.display_name', 'location_id.name'], ['-sold_at']],
+  cierre_ubicacion: [['dia', 'location_id.name', 'total_cobrado', 'total_artistas', 'total_estudio', 'efectivo_en_caja', 'tarjeta', 'otros'], ['-dia']],
+  cierre_artista: [['dia', 'artist_id.display_name', 'location_id.name', 'servicios', 'ventas', 'total_cobrado', 'total_artista', 'total_estudio'], ['-dia']],
+  commission_rules: [['applies_to', 'artist_id.display_name', 'artist_pct', 'valid_from', 'valid_to', 'validation'], ['applies_to']],
+  artists: [['display_name', 'status', 'instagram', 'is_public', 'validation'], ['sort']],
+  locations: [['name', 'street', 'phone', 'validation'], ['sort']],
+  services: [['slug', 'category', 'price_from', 'is_public', 'validation'], ['sort']],
+  work_photos: [['file', 'appointment_id.starts_at', 'publish_ok'], ['-taken_at']],
+  consents: [['signed_at', 'client_id.full_name', 'appointment_id.starts_at'], ['-signed_at']],
+  message_log: [['sent_at', 'client_id.full_name', 'channel', 'kind', 'status'], ['-sent_at']],
+  lead_status_history: [['changed_at', 'lead_id.full_name', 'from_status', 'to_status'], ['-changed_at']],
+};
+
+async function applyPresentation(all) {
+  const ours = new Set(COLLECTIONS.map((c) => c[0]));
+  for (const f of all) {
+    if (!ours.has(f.collection) || !f.schema) continue; // solo columnas reales de nuestras tablas
+    const meta = {};
+    const es = LABELS[f.field];
+    if (es) meta.translations = [{ language: 'es-ES', translation: es }];
+    if (f.field === 'id') { meta.hidden = true; meta.readonly = true; }
+    if (['created_at', 'updated_at'].includes(f.field)) { meta.readonly = true; meta.width = 'half'; }
+    const isText = ['string', 'text'].includes(f.type);
+    const hasInterface = f.meta?.interface && !['input-multiline', 'textarea'].includes(f.meta.interface);
+    if (JSON_FIELDS.has(f.field)) meta.interface = 'input-code', meta.options = { language: 'JSON' };
+    else if (isText && LONG_TEXT.has(f.field)) meta.interface = 'input-multiline';
+    else if (isText && !hasInterface) { meta.interface = 'input'; meta.width = meta.width ?? 'half'; }
+    if (['decimal', 'float', 'integer', 'date', 'dateTime', 'timestamp', 'boolean'].includes(f.type) && f.field !== 'id' && f.field !== 'sort') meta.width = meta.width ?? 'half';
+    if (Object.keys(meta).length) await patchField(f.collection, f.field, meta);
+  }
+  // dentro del editor de textos ES/EN solo se ven los textos
+  for (const [, table, fk] of TRANSLATIONS) {
+    for (const f of [fk, 'languages_code', 'id']) await patchField(table, f, { hidden: true });
+  }
+  // aliases (traducciones, relaciones) también con etiqueta
+  for (const f of await api('GET', '/fields?limit=-1')) {
+    if (!ours.has(f.collection) || f.schema || !LABELS[f.field]) continue;
+    await patchField(f.collection, f.field, { translations: [{ language: 'es-ES', translation: LABELS[f.field] }] });
+  }
+}
+
+async function upsertPreset(collection, body) {
+  const q = `/presets?filter[collection][_eq]=${collection}&filter[user][_null]=true&filter[role][_null]=true&filter[bookmark][_null]=true&limit=1`;
+  const ex = (await api('GET', q))?.[0];
+  if (ex) return api('PATCH', `/presets/${ex.id}`, body);
+  return api('POST', '/presets', { collection, ...body });
+}
+async function applyListPresets() {
+  for (const [c, [fields, sort]] of Object.entries(LIST_COLUMNS)) {
+    await upsertPreset(c, { layout: 'tabular', layout_query: { tabular: { fields, sort, page: 1 } } });
+  }
+  await upsertPreset('artist_gallery', {
+    layout: 'cards',
+    layout_query: { cards: { sort: ['sort'], page: 1 } },
+    layout_options: { cards: { title: '{{artist_id.display_name}}', subtitle: '{{style_id.slug}}', imageSource: 'file', imageFit: 'crop', size: 4, icon: 'image' } },
+  });
+}
+
 async function main() {
   await waitForDirectus();
   const auth = await api('POST', '/auth/login', { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD });
@@ -228,6 +333,8 @@ async function main() {
   for (const c of ['cierre_artista', 'cierre_ubicacion', 'lead_status_history']) {
     for (const f of all.filter((x) => x.collection === c)) await patchField(c, f.field, { readonly: true });
   }
+  await applyPresentation(all);
+  await applyListPresets();
   log('campos y relaciones');
 
   // --- Acceso público: solo leer ficheros de la carpeta web-publica ----

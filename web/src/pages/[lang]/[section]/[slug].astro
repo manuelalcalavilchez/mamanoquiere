@@ -57,7 +57,7 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=60, stale-while-rev
           <p class="muted">{[artist!.styles.map((s) => styleName.get(s) ?? s).join(', '), artist!.locations.map((l) => locName.get(l) ?? l).join(' / ')].filter(Boolean).join(' — ')}</p>
           {artist!.bio ? <p>{artist!.bio}</p> : <Pending lang={lang} />}
           {artist!.instagram && <p><a href={`https://instagram.com/${artist!.instagram.replace(/^@/, '')}`} rel="noopener">Instagram</a></p>}
-          <p><a class="btn" href="#cita">{t('artists.book')} {artist!.display_name}</a></p>
+          <p><a class="btn" href="#cita">{`${t('artists.book')} ${artist!.display_name}`}</a></p>
         </div>
       </div>
     </section>
