@@ -1,5 +1,36 @@
 # Mamanoquiere Tattoo Ibiza — web + app de gestión
 
+## Desplegar en Easypanel como App (Dockerfile) — rama `verifactu-docker`
+
+Esta rama es la versión FastAPI + app propia, con facturación y VERI\*FACTU, empaquetada en **una sola imagen** (`Dockerfile` en la raíz): PostgreSQL 15, la API y Nginx en el mismo contenedor. Un solo dominio y un solo puerto.
+
+| Ruta | Qué es |
+| --- | --- |
+| `/` y `/en` | Web pública |
+| `/app` | App de gestión (agenda, clientes, caja, facturación, VERI\*FACTU…) |
+| `/api/docs` | Documentación de la API |
+
+### Pasos
+
+1. **App** → *Source* → GitHub: owner `manuelalcalavilchez`, repo `mamanoquiere`, rama `verifactu-docker`, build path `/`, *Build* **Dockerfile**.
+2. **Volumen (obligatorio):** *Advanced → Mounts → Add Volume*, mount path `/data`. Ahí van la base de datos (`/data/app/pg15`), las fotos y PDF (`/data/media`) y los secretos generados (`/data/app/secrets.env`). Si reutilizas el volumen de la versión Directus, no se pisan: esta versión usa sus propias carpetas.
+3. **Entorno**, como mínimo:
+   ```env
+   ADMIN_EMAIL=tu@email.com
+   ADMIN_PASSWORD=una-contraseña-larga
+   PUBLIC_URL=https://mamanoquiere.store
+   ```
+   Opcionales: `POSTGRES_PASSWORD` y `JWT_SECRET` (si no, se generan y se guardan en el volumen), SMTP, Evolution API y `VERIFACTU_CERT_PASSWORD` (ver `.env.example`).
+4. **Dominio:** `mamanoquiere.store` → puerto **80**. El subdominio `crm.` ya no hace falta: la gestión está en `/app`.
+5. **Deploy.** Primer arranque en unos 20 s; en los logs aparece `[mmq] web y app en :80 (/app)`.
+6. Entra en `https://mamanoquiere.store/app` con `ADMIN_EMAIL` / `ADMIN_PASSWORD` y sigue «Primeros pasos» (más abajo), en especial **Facturación → Datos fiscales**.
+
+Copia de la base de datos: `docker exec <contenedor> pg_dump -h /run/postgresql -U mmq mamanoquiere > mmq.sql`.
+
+---
+
+## Alternativa: Compose (tres servicios)
+
 Un único despliegue con tres servicios:
 
 | Servicio | Qué es |
