@@ -3,7 +3,8 @@
 #
 #   PostgreSQL 15   (solo interno, socket local)
 #   API FastAPI     (127.0.0.1:8000, solo interno)
-#   Nginx           (puerto 80): web pública, app de gestión /app, /api y /media
+#   Nginx           (puerto 80; también 3000 y 8055 por compatibilidad con la versión Directus):
+#                   web pública, app de gestión /app, /api y /media
 #
 # Datos persistentes en /data (montar un volumen en Easypanel: Advanced → Mounts).
 # Ver README → "Desplegar en Easypanel como App (Dockerfile)".
@@ -33,11 +34,12 @@ COPY api/app ./app
 
 COPY --from=web-build /src/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/mmq-app.conf /etc/nginx/mmq-app.conf
 COPY docker/start.sh /usr/local/bin/mmq-start
 RUN chmod +x /usr/local/bin/mmq-start
 
 VOLUME ["/data"]
-EXPOSE 80
+EXPOSE 80 3000 8055
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
   CMD python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1/api/salud')" || exit 1

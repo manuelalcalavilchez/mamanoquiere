@@ -22,6 +22,7 @@ Esta rama es la versión FastAPI + app propia, con facturación y VERI\*FACTU, e
    ```
    Opcionales: `POSTGRES_PASSWORD` y `JWT_SECRET` (si no, se generan y se guardan en el volumen), SMTP, Evolution API y `VERIFACTU_CERT_PASSWORD` (ver `.env.example`).
 4. **Dominio:** `mamanoquiere.store` → puerto **80**. El subdominio `crm.` ya no hace falta: la gestión está en `/app`.
+   Por compatibilidad con la versión Directus, la imagen también atiende en el **3000** (web y app, igual que el 80) y en el **8055** (redirige `/` y `/admin` a `/app/`). Así, un túnel o dominio que apuntaba a esos puertos sigue funcionando sin cambios.
 5. **Deploy.** Primer arranque en unos 20 s; en los logs aparece `[mmq] web y app en :80 (/app)`.
 6. Entra en `https://mamanoquiere.store/app` con `ADMIN_EMAIL` / `ADMIN_PASSWORD` y sigue «Primeros pasos» (más abajo), en especial **Facturación → Datos fiscales**.
 
