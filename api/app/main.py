@@ -33,4 +33,12 @@ app.mount("/media/web", StaticFiles(directory=Path(settings.media_dir) / "web"),
 
 @app.get("/salud")
 def salud():
+    """Comprueba también la base de datos: si no responde, 503 (el healthcheck reinicia el contenedor)."""
+    from fastapi.responses import JSONResponse
+    from sqlalchemy import text
+    try:
+        with engine.connect() as con:
+            con.execute(text("SELECT 1"))
+    except Exception:  # noqa: BLE001
+        return JSONResponse({"ok": False, "db": False}, status_code=503)
     return {"ok": True}

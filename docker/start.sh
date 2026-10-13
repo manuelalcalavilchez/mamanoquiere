@@ -88,8 +88,13 @@ shutdown() {
 trap 'shutdown 0' TERM INT
 
 log "web y app en :80 (/app) · API interna en :8000"
-while kill -0 "$API_PID" 2>/dev/null && kill -0 "$NGINX_PID" 2>/dev/null; do
+# Supervisión: si cae la API, Nginx o PostgreSQL, el contenedor termina y Easypanel lo reinicia.
+# (PostgreSQL se apaga solo si otra instancia usa el mismo volumen a la vez, p. ej. con
+#  "Cero tiempo de inactividad" activado en Easypanel: hay que desactivarlo para esta app.)
+pg_vivo() { runuser -u postgres -- "$PGBIN/pg_ctl" -D "$PGDATA" status >/dev/null 2>&1; }
+while kill -0 "$API_PID" 2>/dev/null && kill -0 "$NGINX_PID" 2>/dev/null && pg_vivo; do
   sleep 5 & wait $!
 done
+pg_vivo || log "PostgreSQL se ha parado"
 log "un proceso ha terminado: reiniciando contenedor"
 shutdown 1
