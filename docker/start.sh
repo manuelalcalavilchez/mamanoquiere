@@ -58,7 +58,9 @@ fi
 #   1) copia intacta de la carpeta dañada en $APPDATA/pg15-danado-<fecha>
 #   2) pg_resetwal  3) pg_dump (comprueba que los datos se leen)  4) clúster nuevo + restauración
 # La carpeta reseteada también se conserva. Se ejecuta una sola vez (marca .rescate_hecho).
-pg_opts="-c listen_addresses=127.0.0.1 -c unix_socket_directories=/run/postgresql -c max_connections=40 -c shared_buffers=64MB"
+# recovery_init_sync_method=syncfs: tras una parada brusca, PostgreSQL sincroniza el disco con una sola
+# llamada en vez de fichero a fichero (en este servidor eso tardaba más de 2 min y el arranque nunca acababa).
+pg_opts="-c listen_addresses=127.0.0.1 -c unix_socket_directories=/run/postgresql -c max_connections=40 -c shared_buffers=64MB -c recovery_init_sync_method=syncfs"
 if [ "${MMQ_RESCATE_WAL:-}" = 1 ] && [ -s "$PGDATA/PG_VERSION" ] && [ ! -f "$APPDATA/.rescate_hecho" ]; then
   FECHA=$(date +%Y%m%d-%H%M%S)
   log "RESCATE: copia de la carpeta dañada en $APPDATA/pg15-danado-$FECHA"
@@ -66,7 +68,7 @@ if [ "${MMQ_RESCATE_WAL:-}" = 1 ] && [ -s "$PGDATA/PG_VERSION" ] && [ ! -f "$APP
   rm -f "$PGDATA/postmaster.pid"
   log "RESCATE: pg_resetwal"
   runuser -u postgres -- "$PGBIN/pg_resetwal" -f "$PGDATA"
-  runuser -u postgres -- "$PGBIN/pg_ctl" -D "$PGDATA" -l "$APPDATA/rescate-$FECHA.log" -w -t 120 -o "$pg_opts" start >/dev/null
+  runuser -u postgres -- "$PGBIN/pg_ctl" -D "$PGDATA" -l "$APPDATA/rescate-$FECHA.log" -w -t 900 -o "$pg_opts" start >/dev/null
   if ! runuser -u postgres -- pg_dump -h /run/postgresql -U mmq -Fc -f "$APPDATA/rescate-$FECHA.dump" "$DB"; then
     log "RESCATE: pg_dump ha fallado; no se cambia nada más. Copia intacta en pg15-danado-$FECHA"
     runuser -u postgres -- "$PGBIN/pg_ctl" -D "$PGDATA" -m fast -w stop >/dev/null || true
@@ -80,7 +82,7 @@ if [ "${MMQ_RESCATE_WAL:-}" = 1 ] && [ -s "$PGDATA/PG_VERSION" ] && [ ! -f "$APP
   runuser -u postgres -- "$PGBIN/initdb" -D "$PGDATA" -U mmq --pwfile="$PWFILE" -E UTF8 --locale=C.UTF-8 \
           --auth-local=trust --auth-host=scram-sha-256 >/dev/null
   rm -f "$PWFILE"
-  runuser -u postgres -- "$PGBIN/pg_ctl" -D "$PGDATA" -l "$APPDATA/rescate-$FECHA.log" -w -t 120 -o "$pg_opts" start >/dev/null
+  runuser -u postgres -- "$PGBIN/pg_ctl" -D "$PGDATA" -l "$APPDATA/rescate-$FECHA.log" -w -t 900 -o "$pg_opts" start >/dev/null
   psql -h /run/postgresql -U mmq -d postgres -q -c "CREATE DATABASE $DB"
   runuser -u postgres -- pg_restore -h /run/postgresql -U mmq -d "$DB" --no-owner "$APPDATA/rescate-$FECHA.dump"
   runuser -u postgres -- "$PGBIN/pg_ctl" -D "$PGDATA" -m fast -w stop >/dev/null
@@ -96,7 +98,7 @@ if [ -f "$PGDATA/postmaster.pid" ] && ! pg_corriendo; then
   log "postmaster.pid huérfano de una parada brusca: se elimina"
   rm -f "$PGDATA/postmaster.pid"
 fi
-if ! runuser -u postgres -- "$PGBIN/pg_ctl" -D "$PGDATA" -l "$APPDATA/postgres.log" -w -t 120 -o "$pg_opts" start >/dev/null; then
+if ! runuser -u postgres -- "$PGBIN/pg_ctl" -D "$PGDATA" -l "$APPDATA/postgres.log" -w -t 900 -o "$pg_opts" start >/dev/null; then
   log "ERROR: PostgreSQL no arranca. Últimas líneas de su registro:"
   tail -n 40 "$APPDATA/postgres.log" | sed 's/^/[postgres] /'
   exit 1

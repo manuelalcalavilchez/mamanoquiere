@@ -41,7 +41,7 @@ RUN chmod +x /usr/local/bin/mmq-start
 VOLUME ["/data"]
 EXPOSE 80 3000 8055
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=900s --retries=3 \
   CMD python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1/api/salud')" || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/mmq-start"]
