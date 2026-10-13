@@ -6,6 +6,7 @@ from ..db import get_db
 from ..models import Cita, Cliente, Consentimiento, Trabajo
 from ..schemas import CitaOut, ClienteIn, ClienteOut, ConsentimientoOut, TrabajoOut
 from ..security import solo_admin, usuario_actual
+from .trabajos import borrar_archivo_foto
 
 router = APIRouter(prefix="/clientes", tags=["clientes"], dependencies=[Depends(usuario_actual)])
 
@@ -61,9 +62,14 @@ def borrar(cid: int, db: Session = Depends(get_db)):
     obj.nombre, obj.email, obj.telefono, obj.documento, obj.notas = "Cliente eliminado", None, None, None, None
     obj.fecha_nacimiento, obj.acepta_comunicaciones = None, False
     # Sus fotos dejan de publicarse en la web (siguen en su ficha, ligadas al trabajo)
-    for t in db.scalars(select(Trabajo).where(Trabajo.cliente_id == cid, Trabajo.en_portfolio.is_(True))):
-        t.en_portfolio = False
+    fotos = []
+    for t in db.scalars(select(Trabajo).where(Trabajo.cliente_id == cid)):
+        if t.foto_url:
+            fotos.append(t.foto_url)
+        t.foto_url, t.en_portfolio = None, False
     db.commit()
+    for url in fotos:  # sus fotos son datos personales: fuera de la web y del servidor
+        borrar_archivo_foto(url)
 
 
 def _404():

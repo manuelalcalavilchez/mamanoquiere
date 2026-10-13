@@ -97,7 +97,7 @@ button.a-item:hover { border-color: var(--tinta); }
 .a-fotos { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
 .a-fotos figure { margin: 0; background: var(--blanco); border: 1px solid var(--linea); border-radius: 12px; overflow: hidden; }
 .a-fotos img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
-.a-fotos figcaption { padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 13px; }
+.a-fotos figcaption { padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; }
 
 .a-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--tinta); }
 .a-login form { background: var(--fondo); border-radius: 14px; padding: 28px; width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 14px; }

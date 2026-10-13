@@ -142,3 +142,18 @@ def test_foto_movil_preparada(client, admin):
     # Lo que no es una imagen se rechaza aunque diga ser JPG
     r = client.post(f"/trabajos/{t2['id']}/foto", headers=admin, files={"foto": ("x.jpg", io.BytesIO(b"no soy una foto"), "image/jpeg")})
     assert r.status_code == 415
+    # Sustituir la foto borra la anterior del servidor
+    r = client.post(f"/trabajos/{t2['id']}/foto", headers=admin, files={"foto": ("IMG_2.jpg", io.BytesIO(buf.getvalue()), "image/jpeg")})
+    nueva = Path(settings.media_dir) / r.json()["foto_url"].removeprefix("/media/")
+    assert nueva.exists() and not guardada.exists()
+    # Borrar foto: sale de la web y desaparece del disco; el trabajo sigue
+    assert client.patch(f"/trabajos/{t2['id']}/portfolio", headers=admin, params={"publicar": True}).status_code == 200
+    r = client.delete(f"/trabajos/{t2['id']}/foto", headers=admin)
+    assert r.status_code == 200 and r.json()["foto_url"] is None and r.json()["en_portfolio"] is False
+    assert not nueva.exists()
+    assert all(x["id"] != t2["id"] for x in client.get("/publico/portfolio").json()["trabajos"])
+    # Anular un trabajo con foto también borra el archivo
+    r = client.post(f"/trabajos/{t2['id']}/foto", headers=admin, files={"foto": ("IMG_3.jpg", io.BytesIO(buf.getvalue()), "image/jpeg")})
+    tercera = Path(settings.media_dir) / r.json()["foto_url"].removeprefix("/media/")
+    assert client.delete(f"/trabajos/{t2['id']}", headers=admin).status_code == 204
+    assert not tercera.exists()

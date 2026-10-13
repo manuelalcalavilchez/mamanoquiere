@@ -159,7 +159,15 @@ export default function Trabajos() {
           <h2>Hoy</h2>
           {!lista ? <Cargando error={errLista} /> : lista.length === 0 ? <div className="a-vacio">Aún no hay trabajos registrados hoy.</div> : lista.map((t) => (
             <div key={t.id} className="a-item" style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              {t.foto_url ? <img src={t.foto_url} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8 }} /> : (
+              {t.foto_url ? (
+                <span style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <img src={t.foto_url} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8 }} />
+                  <button type="button" className="a-btn a-btn-sm a-btn-peligro" style={{ minHeight: 28, padding: "2px 8px" }} onClick={async () => {
+                    if (!confirm("¿Borrar la foto de este trabajo? Se quita de la web y del servidor.")) return;
+                    try { await api(`/trabajos/${t.id}/foto`, { method: "DELETE" }); aviso("Foto borrada"); recargar(); } catch (er: any) { aviso(er.message, true); }
+                  }}>Borrar foto</button>
+                </span>
+              ) : (
                 <label className="a-btn a-btn-sm" title="Añadir foto a este trabajo" style={{ cursor: "pointer" }}>
                   Añadir foto
                   <input type="file" accept={FOTO_ACCEPT} hidden onChange={async (e) => {
@@ -185,7 +193,7 @@ export default function Trabajos() {
                 } catch (e: any) { aviso(e.message, true); }
               }}>Ticket</button>}
               {gestion && !t.factura_id && <button className="a-btn a-btn-sm a-btn-peligro" onClick={async () => {
-                if (!confirm("¿Anular este trabajo?")) return;
+                if (!confirm("¿Anular este trabajo? Si tiene foto, también se borra.")) return;
                 try { await api(`/trabajos/${t.id}`, { method: "DELETE" }); aviso("Trabajo anulado"); recargar(); } catch (e: any) { aviso(e.message, true); }
               }}>Anular</button>}
             </div>

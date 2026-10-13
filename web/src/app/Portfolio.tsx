@@ -19,6 +19,15 @@ export default function Portfolio() {
     } catch (e: any) { aviso(e.message, true); }
   }
 
+  async function quitar(t: Trabajo) {
+    if (!confirm("¿Borrar esta foto? Se quita de la web y se elimina del servidor. El trabajo se conserva.")) return;
+    try {
+      await api(`/trabajos/${t.id}/foto`, { method: "DELETE" });
+      setDatos(datos!.map((x) => (x.id === t.id ? { ...x, foto_url: null, en_portfolio: false } : x)));
+      aviso("Foto borrada");
+    } catch (e: any) { aviso(e.message, true); }
+  }
+
   return (
     <>
       <div className="a-cab">
@@ -41,6 +50,7 @@ export default function Portfolio() {
               <figcaption>
                 <div style={{ minWidth: 0 }}><strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.descripcion || "Sin título"}</strong><span style={{ color: "var(--gris)" }}>{t.usuario_nombre}</span></div>
                 <label className="a-check" style={{ minHeight: 36 }}><input type="checkbox" checked={t.en_portfolio} onChange={() => cambiar(t)} />Pública</label>
+                <button className="a-btn a-btn-sm a-btn-peligro" onClick={() => quitar(t)}>Borrar foto</button>
               </figcaption>
             </figure>
           ))}

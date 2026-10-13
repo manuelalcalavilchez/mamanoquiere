@@ -21,6 +21,15 @@ router = APIRouter(prefix="/trabajos", tags=["trabajos"])
 MAX_FOTO_MB = 25
 
 
+def borrar_archivo_foto(url: str | None) -> None:
+    """Elimina del disco el archivo de una foto de trabajo (/media/trabajos/<nombre>)."""
+    if not url or not url.startswith("/media/trabajos/"):
+        return
+    nombre = Path(url).name
+    if nombre:
+        (Path(settings.media_dir) / "trabajos" / nombre).unlink(missing_ok=True)
+
+
 @router.get("", response_model=list[TrabajoOut])
 def listar(desde: date | None = None, hasta: date | None = None, tienda_id: int | None = None,
            usuario_id: int | None = None, sin_factura: bool = False, cliente_id: int | None = None,
@@ -113,8 +122,25 @@ async def subir_foto(tid: int, foto: UploadFile = File(...), db: Session = Depen
     carpeta.mkdir(parents=True, exist_ok=True)
     nombre = f"{tid}-{uuid.uuid4().hex[:8]}{ext}"
     (carpeta / nombre).write_bytes(datos)
+    anterior = obj.foto_url
     obj.foto_url = f"/media/trabajos/{nombre}"
     db.commit()
+    borrar_archivo_foto(anterior)  # si se sustituye, la antigua no se queda en el servidor
+    return obj
+
+
+@router.delete("/{tid}/foto", response_model=TrabajoOut)
+def quitar_foto(tid: int, db: Session = Depends(get_db), user: Usuario = Depends(usuario_actual)):
+    """Borra la foto del trabajo: sale de la web y el archivo se elimina del servidor."""
+    obj = db.get(Trabajo, tid)
+    if not obj:
+        raise HTTPException(404, "Trabajo no encontrado")
+    if obj.usuario_id != user.id and not es_gestion(user):
+        raise HTTPException(403, "No es tu trabajo")
+    anterior = obj.foto_url
+    obj.foto_url, obj.en_portfolio = None, False
+    db.commit()
+    borrar_archivo_foto(anterior)
     return obj
 
 
@@ -143,5 +169,7 @@ def borrar(tid: int, db: Session = Depends(get_db), user: Usuario = Depends(usua
         raise HTTPException(409, "La caja de ese día ya está cerrada")
     if obj.factura_id:
         raise HTTPException(409, "Este trabajo ya está facturado: corrige con una factura rectificativa")
+    foto = obj.foto_url
     db.delete(obj)
     db.commit()
+    borrar_archivo_foto(foto)
