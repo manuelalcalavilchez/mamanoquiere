@@ -52,9 +52,21 @@ else
   chown -R postgres:postgres "$PGDATA"
   NEW_DB=0
 fi
-runuser -u postgres -- "$PGBIN/pg_ctl" -D "$PGDATA" -l "$APPDATA/postgres.log" -w -t 60 \
+# Tras una parada brusca queda postmaster.pid; en un contenedor nuevo su número de proceso puede
+# coincidir con otro proceso vivo y PostgreSQL se niega a arrancar. Aquí todavía no corre ningún
+# postgres (una sola réplica, sin "Cero tiempo de inactividad"), así que el fichero es huérfano.
+pg_corriendo() { for c in /proc/[0-9]*/comm; do [ "$(cat "$c" 2>/dev/null)" = postgres ] && return 0; done; return 1; }
+if [ -f "$PGDATA/postmaster.pid" ] && ! pg_corriendo; then
+  log "postmaster.pid huérfano de una parada brusca: se elimina"
+  rm -f "$PGDATA/postmaster.pid"
+fi
+if ! runuser -u postgres -- "$PGBIN/pg_ctl" -D "$PGDATA" -l "$APPDATA/postgres.log" -w -t 120 \
   -o "-c listen_addresses=127.0.0.1 -c unix_socket_directories=/run/postgresql -c max_connections=40 -c shared_buffers=64MB" \
-  start >/dev/null
+  start >/dev/null; then
+  log "ERROR: PostgreSQL no arranca. Últimas líneas de su registro:"
+  tail -n 40 "$APPDATA/postgres.log" | sed 's/^/[postgres] /'
+  exit 1
+fi
 log "PostgreSQL listo"
 PSQL="psql -h /run/postgresql -U mmq -v ON_ERROR_STOP=1 -q"
 [ "$NEW_DB" = 1 ] && $PSQL -d postgres -c "CREATE DATABASE $DB"
