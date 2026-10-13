@@ -49,6 +49,9 @@ export default function Home() {
               {ubis.map((u) => <Link key={u.slug} to={ruta("/local/" + u.slug)}>{u.slug === "puerto" ? "Puerto" : "Beach"}</Link>)}
             </div>
           </div>
+          {!(web.hero_video || web.hero_imagen) && (
+            <div className="w-hero-logo"><img src="/marca/logo.webp" alt="Mama No Quiere · Professional Tattoo · Ibiza Paradise Island" width={505} height={500} {...({ fetchpriority: "high" } as any)} /></div>
+          )}
           {(web.hero_video || web.hero_imagen) && (
             <div className="w-hero-media">
               {web.hero_video ? (

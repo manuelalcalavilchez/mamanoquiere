@@ -17,7 +17,7 @@ def login(client, email, pw):
 
 
 def test_ajustes_personalizables(client, admin):
-    assert client.get("/ajustes").json()["tema"]["acento"] == "#D52B1E"
+    assert client.get("/ajustes").json()["tema"]["acento"] == "#D0201A"
     r = client.put("/ajustes", headers=admin, json={"tema": {"acento": "#2F5BFF"}})
     assert r.status_code == 200
     a = r.json()

@@ -1,10 +1,10 @@
 # Dirección del dossier: editorial, oscuro, un único acento editable
 TEMA = {
-    "acento": "#D52B1E",      # rojo intenso; alternativas: coral #E0573A, azul eléctrico #2F5BFF
-    "carbon": "#0E0E0F",
+    "acento": "#D0201A",      # rojo corazón del logo; alternativas: coral #E0573A, azul eléctrico #2F5BFF
+    "carbon": "#070707",
     "grafito": "#2A2A2D",
     "blanco_roto": "#F2EFEA",
-    "piel": "#D9C2A7",
+    "piel": "#EBC0C1",
     "modo": "oscuro",         # oscuro | claro
     "densidad": "normal",     # compacta | normal | amplia
     "fuente_titulos": "Bricolage Grotesque",

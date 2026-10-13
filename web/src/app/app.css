@@ -1,7 +1,7 @@
 /* App de gestión: clara, densa y legible; el acento viene de Ajustes */
 .a {
   --fondo: #F6F4F0; --tinta: #17161A; --gris: #57534E; --gris2: #44403C; --linea: #E7E5E4; --linea2: #A8A29E;
-  --blanco: #FFFFFF; --acento: #D52B1E; --ok: #2E7D4F; --suave: #F0EEEC;
+  --blanco: #FFFFFF; --acento: #D0201A; --ok: #2E7D4F; --suave: #F0EEEC;
   --titulos: "Bricolage Grotesque Variable", "Arial Narrow", sans-serif;
   min-height: 100vh; min-height: 100dvh; display: flex; background: var(--fondo); color: var(--tinta);
   font-family: "DM Sans Variable", system-ui, sans-serif; font-size: 15px; line-height: 1.45;
@@ -13,8 +13,9 @@
 .a a { color: var(--acento); }
 .a :focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 
-.a-side { width: 232px; flex: none; background: var(--tinta); color: #F6F4F0; padding: 24px 14px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-.a-side .a-marca { font-family: var(--titulos); font-weight: 800; font-size: 20px; padding: 0 10px 20px; }
+.a-side { width: 232px; flex: none; background: #070707; border-right: 2px solid transparent; border-image: linear-gradient(180deg, #F3E823, #DF7402 45%, #D0201A) 1; color: #F6F4F0; padding: 24px 14px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.a-side .a-marca { font-family: var(--titulos); font-weight: 800; font-size: 17px; padding: 0 10px 20px; line-height: 1.15; }
+.a-side .a-marca img { height: 44px; width: auto; flex: none; }
 .a-side a { color: #F6F4F0; text-decoration: none; padding: 11px 12px; border-radius: 8px; min-height: 44px; display: flex; align-items: center; gap: 8px; }
 .a-side a:hover { background: #2A2A2D; color: #F6F4F0; }
 .a-side a.active { background: #F6F4F0; color: var(--tinta); font-weight: 700; }
@@ -28,7 +29,7 @@
   .a { flex-direction: column; }
   .a-side { position: fixed; inset: 0; z-index: 50; width: auto; height: auto; transform: translateX(-100%); transition: transform .2s; }
   .a-side.abierto { transform: none; }
-  .a-top { display: flex; align-items: center; justify-content: space-between; background: var(--tinta); color: #F6F4F0; padding: calc(env(safe-area-inset-top, 0px) + 8px) 12px 8px; position: sticky; top: 0; z-index: 40; }
+  .a-top { display: flex; align-items: center; justify-content: space-between; background: #070707; border-bottom: 2px solid #D0201A; color: #F6F4F0; padding: calc(env(safe-area-inset-top, 0px) + 8px) 12px 8px; position: sticky; top: 0; z-index: 40; }
   .a-top strong { font-family: var(--titulos); font-size: 18px; }
   .a-top button { width: 44px; height: 44px; background: none; border: 0; color: inherit; cursor: pointer; }
   .a-main { padding: 18px 14px 60px; }
@@ -99,7 +100,8 @@ button.a-item:hover { border-color: var(--tinta); }
 .a-fotos img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
 .a-fotos figcaption { padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; }
 
-.a-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--tinta); }
+.a-login { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 20px; background: #070707; }
+.a-login > img { width: min(220px, 60vw); height: auto; }
 .a-login form { background: var(--fondo); border-radius: 14px; padding: 28px; width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 14px; }
 
 @media (prefers-reduced-motion: reduce) { .a-side { transition: none; } }

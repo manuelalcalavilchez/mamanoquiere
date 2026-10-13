@@ -40,14 +40,14 @@ export default function Layout() {
   return (
     <div className="a" style={ajustes?.tema?.acento ? ({ "--acento": ajustes.tema.acento } as any) : undefined}>
       <div className="a-top">
-        <strong>{ajustes?.nombre_estudio ?? "Gestión"}</strong>
+        <strong style={{ display: "flex", alignItems: "center", gap: 8 }}><img src="/marca/emblema.webp" alt="" width={216} height={339} style={{ height: 34, width: "auto" }} />{ajustes?.nombre_estudio ?? "Gestión"}</strong>
         <button aria-label="Abrir menú" aria-expanded={abierto} onClick={() => setAbierto(true)}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         </button>
       </div>
       <nav className={"a-side" + (abierto ? " abierto" : "")} aria-label="Menú principal">
         <div className="a-marca" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span>{ajustes?.nombre_estudio ?? "Gestión"}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 10 }}><img src="/marca/emblema.webp" alt="" width={216} height={339} />{ajustes?.nombre_estudio ?? "Gestión"}</span>
           {abierto && <button className="a-btn a-btn-sm" onClick={() => setAbierto(false)}>Cerrar</button>}
         </div>
         {items.map((i) => (

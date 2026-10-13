@@ -8,7 +8,7 @@ const MODULOS: Record<string, string> = {
   consentimiento: "Consentimiento digital", mensajes: "Mensajes a clientes", portfolio: "Portfolio público",
   piercing: "Piercing", productos: "Venta de productos", invitados: "Artistas invitados", facturacion: "Facturación e IVA",
 };
-const ACENTOS = [["#D52B1E", "Rojo intenso"], ["#C2410C", "Naranja coral"], ["#2F5BFF", "Azul eléctrico"], ["#17161A", "Negro"]];
+const ACENTOS = [["#D0201A", "Rojo del logo"], ["#DF7402", "Naranja llama"], ["#2F5BFF", "Azul eléctrico"], ["#17161A", "Negro"]];
 const LEGALES: Record<string, string> = { privacidad: "Política de privacidad", cookies: "Política de cookies", aviso: "Aviso legal" };
 type QA = { p: string; r: string };
 

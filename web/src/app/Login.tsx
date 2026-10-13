@@ -15,6 +15,7 @@ export default function Login() {
   return (
     <div className="a" style={{ display: "block" }}>
       <div className="a-login">
+        <img src="/marca/logo.webp" alt="Mama No Quiere · Professional Tattoo" width={505} height={500} />
         <form onSubmit={async (e) => {
           e.preventDefault();
           setCargando(true);

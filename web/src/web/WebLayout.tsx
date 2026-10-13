@@ -62,7 +62,10 @@ export default function WebLayout() {
       <a className="w-skip" href="#contenido">Saltar al contenido</a>
       <header className="w-head">
         <div className="w-wrap">
-          <Link to={ruta("/")} className="w-logo">MAMANOQUIERE</Link>
+          <Link to={ruta("/")} className="w-logo" aria-label={cfg?.nombre ?? "Mamanoquiere Tattoo Ibiza"}>
+            <img className="w-logo-em" src="/marca/emblema.webp" alt="" width={216} height={339} />
+            <img className="w-logo-txt" src="/marca/titulo.webp" alt="Mama No Quiere" width={451} height={47} />
+          </Link>
           <nav className="w-nav" aria-label="Principal">{links}</nav>
           <div className="w-headR">
             <Link className="w-lang" to={otraLengua(pathname)} aria-label="Cambiar idioma">{ruta("/") === "/" ? "EN" : "ES"}</Link>
@@ -85,6 +88,7 @@ export default function WebLayout() {
         <footer className="w-foot">
           <div className="w-wrap">
             <div>
+              <img className="w-foot-logo" src="/marca/logo.webp" alt="Mama No Quiere · Professional Tattoo · Ibiza" width={505} height={500} loading="lazy" />
               <strong>{cfg?.nombre ?? "Mamanoquiere Tattoo Ibiza"}</strong>
               {principal && <a href={telHref(principal.telefono)} onClick={() => track("clic_telefono")}>{principal.telefono}</a>}
               {ig && <a href={ig} target="_blank" rel="noopener" onClick={() => track("clic_instagram")}>Instagram</a>}
