@@ -103,8 +103,8 @@ export default function Ajustes() {
           <Campo label="Texto de portada" id="sub" ancho><textarea id="sub" value={web.subtitulo?.[lang] ?? ""} onChange={(e) => setW(["subtitulo", lang], e.target.value || undefined)} /></Campo>
           <Campo label="Título para Google" id="st"><input id="st" value={web.seo?.[lang]?.titulo ?? ""} onChange={(e) => setW(["seo", lang, "titulo"], e.target.value)} /></Campo>
           <Campo label="Descripción para Google" id="sd"><input id="sd" value={web.seo?.[lang]?.descripcion ?? ""} onChange={(e) => setW(["seo", lang, "descripcion"], e.target.value)} /></Campo>
-          <Campo label="Imagen de portada" id="hi" nota={web.hero_imagen ? "Subida" : "JPG, WEBP o AVIF, máx. 10 MB"}>
-            <input id="hi" type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={!!subiendo} onChange={(e) => subir("hero_imagen", e.target.files?.[0])} />
+          <Campo label="Imagen de portada" id="hi" nota={web.hero_imagen ? "Subida" : "JPG, WEBP, AVIF o HEIC, máx. 10 MB"}>
+            <input id="hi" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,.heic,.heif" disabled={!!subiendo} onChange={(e) => subir("hero_imagen", e.target.files?.[0])} />
           </Campo>
           <Campo label="Vídeo de portada (opcional)" id="hv" nota={web.hero_video ? "Subido" : "MP4 o WEBM corto, máx. 40 MB"}>
             <input id="hv" type="file" accept="video/mp4,video/webm" disabled={!!subiendo} onChange={(e) => subir("hero_video", e.target.files?.[0])} />

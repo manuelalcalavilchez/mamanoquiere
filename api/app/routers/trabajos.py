@@ -14,10 +14,11 @@ from ..security import es_gestion, usuario_actual
 from ..services.caja import dia_cerrado
 from ..services.comisiones import reparto_completo
 from ..services.fiscal import calcular_descuento, config_fiscal, descuento_vigente
+from ..services.imagenes import ImagenInvalida, parece_imagen, preparar
 from .ajustes import obtener
 
 router = APIRouter(prefix="/trabajos", tags=["trabajos"])
-FOTOS_OK = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+MAX_FOTO_MB = 25
 
 
 @router.get("", response_model=list[TrabajoOut])
@@ -99,12 +100,15 @@ async def subir_foto(tid: int, foto: UploadFile = File(...), db: Session = Depen
         raise HTTPException(404, "Trabajo no encontrado")
     if obj.usuario_id != user.id and not es_gestion(user):
         raise HTTPException(403, "No es tu trabajo")
-    ext = FOTOS_OK.get(foto.content_type or "")
-    if not ext:
-        raise HTTPException(415, "Formato no admitido (jpg, png, webp)")
-    datos = await foto.read()
-    if len(datos) > 15 * 1024 * 1024:
-        raise HTTPException(413, "La foto supera 15 MB")
+    if not parece_imagen(foto.content_type, foto.filename):
+        raise HTTPException(415, "Formato no admitido: JPG, PNG, WEBP o HEIC")
+    datos = await foto.read(MAX_FOTO_MB * 1024 * 1024 + 1)
+    if len(datos) > MAX_FOTO_MB * 1024 * 1024:
+        raise HTTPException(413, f"La foto supera {MAX_FOTO_MB} MB")
+    try:  # orientación, sin GPS ni datos del móvil, tamaño web
+        datos, ext = preparar(datos)
+    except ImagenInvalida as e:
+        raise HTTPException(415, str(e)) from e
     carpeta = Path(settings.media_dir) / "trabajos"
     carpeta.mkdir(parents=True, exist_ok=True)
     nombre = f"{tid}-{uuid.uuid4().hex[:8]}{ext}"

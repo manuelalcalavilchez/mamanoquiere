@@ -65,11 +65,14 @@ def test_flujo_completo(client, admin):
                 "tipo_servicio": "producto", "importe_cent": 2050, "forma_pago": "efectivo"})
 
     # Foto + portfolio
-    png = base64.b64decode(FIRMA.split(",")[1])
-    r = client.post(f"/trabajos/{t['id']}/foto", headers=tn, files={"foto": ("a.png", io.BytesIO(png), "image/png")})
+    from PIL import Image
+    png = io.BytesIO()
+    Image.new("RGB", (800, 600), (20, 20, 20)).save(png, "PNG")
+    r = client.post(f"/trabajos/{t['id']}/foto", headers=tn, files={"foto": ("a.png", io.BytesIO(png.getvalue()), "image/png")})
     assert r.status_code == 200 and r.json()["foto_url"].startswith("/media/trabajos/")
     assert client.patch(f"/trabajos/{t['id']}/portfolio", headers=tn, params={"publicar": True}).status_code == 200
     assert len(client.get("/publico/portfolio").json()["trabajos"]) == 1
+
 
     # Caja: el profesional solo ve lo suyo
     r = client.get("/caja/resumen", headers=tn, params={"tienda_id": 1, "fecha": HOY}).json()
@@ -109,3 +112,33 @@ def test_flujo_completo(client, admin):
 
     hist = client.get(f"/clientes/{cli['id']}/historial", headers=tn).json()
     assert len(hist["trabajos"]) == 1 and len(hist["consentimientos"]) == 1
+
+    # Derecho de supresión: las fotos del cliente dejan de publicarse en la web
+    assert any(x["id"] == t["id"] for x in client.get("/publico/portfolio").json()["trabajos"])
+    assert client.delete(f"/clientes/{cli['id']}", headers=admin).status_code == 204
+    assert not any(x["id"] == t["id"] for x in client.get("/publico/portfolio").json()["trabajos"])
+
+
+def test_foto_movil_preparada(client, admin):
+    # Foto de móvil: se orienta, se reduce y se le quitan GPS y datos del teléfono
+    from PIL import Image
+    buf = io.BytesIO()
+    exif = Image.Exif()
+    exif[0x010F] = "Apple"                      # Make
+    exif[0x0112] = 6                            # Orientation: girada 90°
+    exif[0x8825] = {1: "N", 2: (38.0, 54.0, 0.0)}  # GPS
+    Image.new("RGB", (4032, 3024), (120, 30, 30)).save(buf, "JPEG", exif=exif)
+    t2 = client.post("/trabajos", headers=admin, json={"tienda_id": 2, "tipo_servicio": "tatuaje",
+                                                    "importe_cent": 10000, "forma_pago": "tarjeta"}).json()
+    r = client.post(f"/trabajos/{t2['id']}/foto", headers=admin, files={"foto": ("IMG_1.jpg", io.BytesIO(buf.getvalue()), "image/jpeg")})
+    assert r.status_code == 200
+    from app.config import settings
+    from pathlib import Path
+    guardada = Path(settings.media_dir) / r.json()["foto_url"].removeprefix("/media/")
+    im = Image.open(guardada)
+    assert im.size == (1500, 2000)              # girada (vertical) y con el lado mayor a 2000 px
+    assert not im.getexif().get_ifd(0x8825) and 0x010F not in im.getexif()
+    assert guardada.stat().st_size < 600_000
+    # Lo que no es una imagen se rechaza aunque diga ser JPG
+    r = client.post(f"/trabajos/{t2['id']}/foto", headers=admin, files={"foto": ("x.jpg", io.BytesIO(b"no soy una foto"), "image/jpeg")})
+    assert r.status_code == 415

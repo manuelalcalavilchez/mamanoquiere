@@ -10,6 +10,24 @@ export type Trabajo = { id: number; tienda_id: number; usuario_id: number; usuar
   precio_cent: number | null; descuento_cent: number; descuento_motivo: string | null; iva_x100: number | null; base_cent: number | null; cuota_iva_cent: number | null; factura_id: number | null };
 type Descuento = { id: number; nombre: string; tipo: string; valor: number; solo_gestion: boolean };
 
+const MAX_FOTO_MB = 25;
+const FOTO_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif";
+
+/** Comprueba la foto en el navegador antes de enviar nada. */
+export function validarFoto(foto: File | null): string {
+  if (!foto) return "";
+  const ok = /^image\/(jpeg|png|webp|heic|heif)$/.test(foto.type) || /\.(jpe?g|png|webp|heic|heif)$/i.test(foto.name);
+  if (!ok) return "La foto tiene que ser JPG, PNG, WEBP o HEIC";
+  if (foto.size > MAX_FOTO_MB * 1024 * 1024) return `La foto supera ${MAX_FOTO_MB} MB`;
+  return "";
+}
+
+export async function subirFoto(trabajoId: number, foto: File) {
+  const fd = new FormData();
+  fd.append("foto", foto);
+  return api<Trabajo>(`/trabajos/${trabajoId}/foto`, { method: "POST", body: fd });
+}
+
 export default function Trabajos() {
   const { yo, tiendas, equipo, gestion, ajustes } = useAuth();
   const aviso = useAviso();
@@ -21,6 +39,7 @@ export default function Trabajos() {
   const [tienda, setTienda] = useState<number>(yo?.tienda_id ?? tiendas[0]?.id);
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [foto, setFoto] = useState<File | null>(null);
+  const [claveFoto, setClaveFoto] = useState(0);   // al cambiarla se vacía el selector de archivo
   const [reparto, setReparto] = useState<{ porcentaje: number; profesional_cent: number; estudio_cent: number; base_cent?: number; cuota_iva_cent?: number; iva_x100?: number; total_cent?: number } | null>(null);
   const { datos: descuentos } = useDatos(() => api<Descuento[]>("/descuentos"), []);
   const facturacion = mods.facturacion !== false;
@@ -50,6 +69,8 @@ export default function Trabajos() {
     setError("");
     const cent = aCent(f.importe);
     if (!cent) { setError("Escribe el precio"); return; }
+    const errFoto = validarFoto(foto);
+    if (errFoto) { setError(errFoto); return; }   // antes de crear el trabajo: así no queda guardado a medias
     setGuardando(true);
     try {
       const t = await api<Trabajo>("/trabajos", { method: "POST", json: {
@@ -60,14 +81,16 @@ export default function Trabajos() {
         descuento_cent: f.dto === "eur" ? aCent(f.dtoValor) : null,
         descuento_motivo: f.dto === "pct" || f.dto === "eur" ? f.dtoMotivo || null : null,
       } });
+      let fallo = "";
       if (foto) {
-        const fd = new FormData();
-        fd.append("foto", foto);
-        await api(`/trabajos/${t.id}/foto`, { method: "POST", body: fd });
-        if (f.portfolio && mods.portfolio !== false) await api(`/trabajos/${t.id}/portfolio`, { method: "PATCH", query: { publicar: true } });
+        try {
+          await subirFoto(t.id, foto);
+          if (f.portfolio && mods.portfolio !== false) await api(`/trabajos/${t.id}/portfolio`, { method: "PATCH", query: { publicar: true } });
+        } catch (err: any) { fallo = err.message; }
       }
-      aviso("Trabajo guardado");
-      setF(vacio); setCliente(null); setFoto(null); recargar();
+      // El trabajo ya está guardado: se limpia el formulario aunque la foto falle, para no registrarlo dos veces
+      aviso(fallo ? `Trabajo guardado, pero la foto no se ha subido (${fallo}). Añádela desde la lista de hoy.` : "Trabajo guardado", !!fallo);
+      setF(vacio); setCliente(null); setFoto(null); setClaveFoto((k) => k + 1); recargar();
     } catch (err: any) { setError(err.message); } finally { setGuardando(false); }
   }
 
@@ -112,8 +135,8 @@ export default function Trabajos() {
               </>
             )}
             <Campo label="Descripción" id="desc" ancho><input id="desc" value={f.descripcion} onChange={(e) => setF({ ...f, descripcion: e.target.value })} placeholder="Fine line tobillo" /></Campo>
-            <Campo label="Foto del trabajo" id="foto" ancho nota="JPG, PNG o WEBP, máximo 15 MB">
-              <input id="foto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(e) => setFoto(e.target.files?.[0] ?? null)} />
+            <Campo label="Foto del trabajo" id="foto" ancho nota="Cámara o galería · JPG, PNG, WEBP o HEIC, máximo 25 MB">
+              <input id="foto" key={claveFoto} type="file" accept={FOTO_ACCEPT} onChange={(e) => { const x = e.target.files?.[0] ?? null; setFoto(x); setError(validarFoto(x)); }} />
             </Campo>
             {mods.portfolio !== false && (
               <label className="a-check a-ancho"><input type="checkbox" checked={f.portfolio} onChange={(e) => setF({ ...f, portfolio: e.target.checked })} />Publicar la foto en el portfolio</label>
@@ -136,7 +159,23 @@ export default function Trabajos() {
           <h2>Hoy</h2>
           {!lista ? <Cargando error={errLista} /> : lista.length === 0 ? <div className="a-vacio">Aún no hay trabajos registrados hoy.</div> : lista.map((t) => (
             <div key={t.id} className="a-item" style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              {t.foto_url ? <img src={t.foto_url} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8 }} /> : null}
+              {t.foto_url ? <img src={t.foto_url} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8 }} /> : (
+                <label className="a-btn a-btn-sm" title="Añadir foto a este trabajo" style={{ cursor: "pointer" }}>
+                  Añadir foto
+                  <input type="file" accept={FOTO_ACCEPT} hidden onChange={async (e) => {
+                    const x = e.target.files?.[0]; e.target.value = "";
+                    if (!x) return;
+                    const err = validarFoto(x);
+                    if (err) { aviso(err, true); return; }
+                    try {
+                      await subirFoto(t.id, x);
+                      if (mods.portfolio !== false) aviso("Foto añadida. Para publicarla en la web, márcala en Portfolio.");
+                      else aviso("Foto añadida");
+                      recargar();
+                    } catch (er: any) { aviso(er.message, true); }
+                  }} />
+                </label>
+              )}
               <div style={{ flex: 1 }}><strong>{t.descripcion || SERVICIOS[t.tipo_servicio]}</strong><br /><small>{t.usuario_nombre} · {PAGOS[t.forma_pago]} · {t.porcentaje} %{t.descuento_cent ? ` · dto. ${eur2(t.descuento_cent)}` : ""}{t.factura_id ? " · facturado" : ""}</small></div>
               <strong>{euros(t.importe_cent)}</strong>
               {gestion && facturacion && !t.factura_id && <button className="a-btn a-btn-sm" onClick={async () => {

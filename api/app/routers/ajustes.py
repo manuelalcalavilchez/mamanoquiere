@@ -11,6 +11,7 @@ from ..db import get_db
 from ..models import Ajustes
 from ..schemas import AjustesIn, AjustesOut
 from ..security import solo_admin
+from ..services.imagenes import ImagenInvalida, preparar
 
 router = APIRouter(prefix="/ajustes", tags=["ajustes"])
 
@@ -54,7 +55,7 @@ def restablecer(db: Session = Depends(get_db)):
     return a
 
 
-MEDIOS = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/avif": ".avif",
+MEDIOS = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/avif": ".avif", "image/heic": ".heic", "image/heif": ".heif",
           "video/mp4": ".mp4", "video/webm": ".webm"}
 
 
@@ -63,11 +64,16 @@ async def subir_medio(archivo: UploadFile = File(...)):
     """Imagen o vídeo para la web (portada, logo). Se sirve en /media/web/."""
     ext = MEDIOS.get(archivo.content_type or "")
     if not ext:
-        raise HTTPException(415, "Formato no admitido: JPG, PNG, WEBP, AVIF, MP4 o WEBM")
+        raise HTTPException(415, "Formato no admitido: JPG, PNG, WEBP, AVIF, HEIC, MP4 o WEBM")
     limite = 40 if ext in (".mp4", ".webm") else 10
     datos = await archivo.read(limite * 1024 * 1024 + 1)
     if len(datos) > limite * 1024 * 1024:
         raise HTTPException(413, f"Máximo {limite} MB")
+    if ext not in (".mp4", ".webm"):  # imágenes: orientación, sin metadatos, tamaño web
+        try:
+            datos, ext = preparar(datos, max_lado=2400)
+        except ImagenInvalida as e:
+            raise HTTPException(415, str(e)) from e
     carpeta = Path(settings.media_dir) / "web"
     carpeta.mkdir(parents=True, exist_ok=True)
     nombre = f"{uuid.uuid4().hex[:12]}{ext}"

@@ -60,6 +60,9 @@ def borrar(cid: int, db: Session = Depends(get_db)):
     obj = db.get(Cliente, cid) or _404()
     obj.nombre, obj.email, obj.telefono, obj.documento, obj.notas = "Cliente eliminado", None, None, None, None
     obj.fecha_nacimiento, obj.acepta_comunicaciones = None, False
+    # Sus fotos dejan de publicarse en la web (siguen en su ficha, ligadas al trabajo)
+    for t in db.scalars(select(Trabajo).where(Trabajo.cliente_id == cid, Trabajo.en_portfolio.is_(True))):
+        t.en_portfolio = False
     db.commit()
 
 

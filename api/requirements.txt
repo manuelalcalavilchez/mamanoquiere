@@ -11,3 +11,5 @@ reportlab==4.*
 httpx==0.27.*
 tzdata==2025.*
 cryptography==44.*
+pillow==12.*
+pillow-heif==1.*
