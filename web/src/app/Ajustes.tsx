@@ -104,10 +104,22 @@ export default function Ajustes() {
           <Campo label="Título para Google" id="st"><input id="st" value={web.seo?.[lang]?.titulo ?? ""} onChange={(e) => setW(["seo", lang, "titulo"], e.target.value)} /></Campo>
           <Campo label="Descripción para Google" id="sd"><input id="sd" value={web.seo?.[lang]?.descripcion ?? ""} onChange={(e) => setW(["seo", lang, "descripcion"], e.target.value)} /></Campo>
           <Campo label="Imagen de portada" id="hi" nota={web.hero_imagen ? "Subida" : "JPG, WEBP, AVIF o HEIC, máx. 10 MB"}>
-            <input id="hi" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,.heic,.heif" disabled={!!subiendo} onChange={(e) => subir("hero_imagen", e.target.files?.[0])} />
+            {web.hero_imagen && (
+              <div className="a-fila" style={{ alignItems: "center", marginBottom: 6 }}>
+                <img src={web.hero_imagen} alt="Portada actual" style={{ width: 120, height: 68, objectFit: "cover", borderRadius: 8 }} />
+                <button type="button" className="a-btn a-btn-sm a-btn-peligro" onClick={() => { setW(["hero_imagen"], null); aviso("Imagen quitada; pulsa Guardar cambios para aplicarlo"); }}>Quitar imagen</button>
+              </div>
+            )}
+            <input id="hi" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,.heic,.heif" disabled={!!subiendo} onChange={(e) => { subir("hero_imagen", e.target.files?.[0]); e.target.value = ""; }} />
           </Campo>
           <Campo label="Vídeo de portada (opcional)" id="hv" nota={web.hero_video ? "Subido" : "MP4 o WEBM corto, máx. 40 MB"}>
-            <input id="hv" type="file" accept="video/mp4,video/webm" disabled={!!subiendo} onChange={(e) => subir("hero_video", e.target.files?.[0])} />
+            {web.hero_video && (
+              <div className="a-fila" style={{ alignItems: "center", marginBottom: 6 }}>
+                <video src={web.hero_video} muted playsInline preload="metadata" style={{ width: 120, height: 68, objectFit: "cover", borderRadius: 8 }} />
+                <button type="button" className="a-btn a-btn-sm a-btn-peligro" onClick={() => { setW(["hero_video"], null); aviso("Vídeo quitado; pulsa Guardar cambios para aplicarlo"); }}>Quitar vídeo</button>
+              </div>
+            )}
+            <input id="hv" type="file" accept="video/mp4,video/webm" disabled={!!subiendo} onChange={(e) => { subir("hero_video", e.target.files?.[0]); e.target.value = ""; }} />
           </Campo>
           <Campo label="Instagram" id="ig"><input id="ig" value={web.instagram ?? ""} onChange={(e) => setW(["instagram"], e.target.value)} /></Campo>
           <Campo label="Valoración verificada" nota="Solo si la puedes comprobar en la fuente">

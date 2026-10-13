@@ -1,3 +1,5 @@
+import json
+import re
 import uuid
 from pathlib import Path
 
@@ -14,6 +16,13 @@ from ..security import solo_admin
 from ..services.imagenes import ImagenInvalida, preparar
 
 router = APIRouter(prefix="/ajustes", tags=["ajustes"])
+_MEDIO_WEB = re.compile(r"/media/web/([A-Za-z0-9_.-]+)")
+
+
+def _medios_usados(a: Ajustes) -> set[str]:
+    """Nombres de archivo de /media/web/ a los que hacen referencia los ajustes (portada, vídeo, logo…)."""
+    texto = json.dumps([a.web, a.tema, a.logo_url], default=str)
+    return set(_MEDIO_WEB.findall(texto))
 
 
 def obtener(db: Session) -> Ajustes:
@@ -41,9 +50,13 @@ def actualizar(datos: AjustesIn, db: Session = Depends(get_db)):
     for clave in ("tema", "modulos", "web"):
         if clave in cambios:
             cambios[clave] = {**getattr(a, clave), **cambios[clave]}
+    antes = _medios_usados(a)
     for k, v in cambios.items():
         setattr(a, k, v)
     db.commit()
+    # Lo que se ha quitado o sustituido (portada, vídeo, logo) se elimina también del servidor
+    for nombre in antes - _medios_usados(a):
+        (Path(settings.media_dir) / "web" / nombre).unlink(missing_ok=True)
     return a
 
 

@@ -157,3 +157,28 @@ def test_foto_movil_preparada(client, admin):
     tercera = Path(settings.media_dir) / r.json()["foto_url"].removeprefix("/media/")
     assert client.delete(f"/trabajos/{t2['id']}", headers=admin).status_code == 204
     assert not tercera.exists()
+
+
+def test_portada_quitar_y_sustituir(client, admin):
+    from PIL import Image
+    from app.config import settings
+    from pathlib import Path
+
+    def subir():
+        buf = io.BytesIO(); Image.new("RGB", (800, 500), (10, 90, 160)).save(buf, "JPEG")
+        r = client.post("/ajustes/medios", headers=admin, files={"archivo": ("p.jpg", io.BytesIO(buf.getvalue()), "image/jpeg")})
+        assert r.status_code == 200
+        return r.json()["url"], Path(settings.media_dir) / r.json()["url"].removeprefix("/media/")
+
+    url1, f1 = subir()
+    vid = Path(settings.media_dir) / "web" / "v1.mp4"; vid.write_bytes(b"x")
+    assert client.put("/ajustes", headers=admin, json={"web": {"hero_imagen": url1, "hero_video": "/media/web/v1.mp4"}}).status_code == 200
+    # Sustituir la imagen borra la anterior; el vídeo sigue
+    url2, f2 = subir()
+    assert client.put("/ajustes", headers=admin, json={"web": {"hero_imagen": url2}}).status_code == 200
+    assert not f1.exists() and f2.exists() and vid.exists()
+    # Quitar imagen y vídeo: fuera de la web y del servidor
+    r = client.put("/ajustes", headers=admin, json={"web": {"hero_imagen": None, "hero_video": None}})
+    assert r.status_code == 200 and not r.json()["web"]["hero_imagen"] and not r.json()["web"]["hero_video"]
+    assert not f2.exists() and not vid.exists()
+    assert not client.get("/ajustes").json()["web"].get("hero_imagen")
